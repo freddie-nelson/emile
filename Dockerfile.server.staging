@@ -1,0 +1,21 @@
+FROM node:20-alpine
+
+RUN npm install -g pnpm
+
+RUN mkdir -p /app/ && chown -R node:node /app
+
+COPY --chown=node:node ./ /app/
+
+WORKDIR /app/server
+
+USER node
+
+RUN pnpm i
+
+RUN pnpm run setup
+
+RUN pnpm run build
+
+EXPOSE 3000
+
+CMD ["pnpm", "start"]
