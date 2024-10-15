@@ -1,3 +1,5 @@
-import hello from "./utils/helloWorld";
+import { listen } from "@colyseus/tools";
+import app from "./app.config";
+import { env } from "./helpers/env";
 
-hello();
+listen(app, env.PORT);
