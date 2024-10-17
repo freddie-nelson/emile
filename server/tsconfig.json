@@ -17,8 +17,11 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@core/*": ["../core/*"]
+      "@core/*": ["../core/*"],
+      "@ecs/*": ["../ecs/*"],
+      "@state/*": ["../state/*"],
+      "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src", "../core"]
+  "include": ["src", "../core", "../ecs", "../state", "../shared"]
 }

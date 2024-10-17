@@ -1,9 +1,10 @@
 import { Client, Room } from "colyseus.js";
 import { cli, Options } from "@colyseus/loadtest";
+import { State } from "@state/src/state";
 
 export async function main(options: Options) {
   const client = new Client(options.endpoint);
-  const room: Room = await client.joinOrCreate(options.roomName, {
+  const room: Room<State> = await client.joinOrCreate(options.roomName, {
     // your join options here...
   });
 
@@ -15,6 +16,7 @@ export async function main(options: Options) {
 
   room.onStateChange((state) => {
     console.log("state change:", state);
+    console.log("entities:", state.entities);
   });
 
   room.onLeave((code) => {

@@ -1,8 +1,10 @@
 import { Logger } from "@shared/src/Logger";
 import { Component, ComponentConstructor } from "./component";
 import { System, SystemType } from "./system";
-import { MapSchema } from "@colyseus/schema";
+import { MapSchema, Schema } from "@colyseus/schema";
 import { Entity, EntityQuery } from "./entity";
+
+export type EntityMap = MapSchema<Entity>;
 
 export enum RegistryType {
   SERVER,
@@ -25,7 +27,7 @@ export class Registry {
   /**
    * The entity map to store entities in.
    */
-  private entities: MapSchema<Entity>;
+  private entities: EntityMap;
 
   /**
    * The map of queries to the entities that match that query.
@@ -57,7 +59,7 @@ export class Registry {
    * @param type The type of the registry.
    * @param entities The entity map to store entities in.
    */
-  constructor(type: RegistryType, entities: MapSchema<Entity>) {
+  constructor(type: RegistryType, entities: EntityMap) {
     this.type = type;
     this.entities = entities;
 

@@ -79,6 +79,15 @@ export class Entity extends Schema {
     return this.components.has(component.name);
   }
 
+  /**
+   * Checks if the entity matches a query.
+   *
+   * An entity matches a query if it has all the components in the query.
+   *
+   * @param query The query to match against.
+   *
+   * @returns True if the entity matches the query, false otherwise.
+   */
   public matchesQuery(query: EntityQuery) {
     for (const component of query) {
       if (!this.hasComponent(component)) {

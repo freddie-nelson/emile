@@ -12,7 +12,13 @@
     "forceConsistentCasingInFileNames": true,
     "useDefineForClassFields": false,
     "resolveJsonModule": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@ecs/*": ["../ecs/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "../ecs"]
 }
