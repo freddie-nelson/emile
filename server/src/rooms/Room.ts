@@ -1,3 +1,5 @@
+import { MapSchema } from "@colyseus/schema";
+import { Component } from "@ecs/src/component";
 import { Registry, RegistryType } from "@ecs/src/registry";
 import { Transform } from "@state/src/components/transform";
 import { State } from "@state/src/state";
@@ -24,8 +26,10 @@ export class DefaultRoom extends Room<State> {
       throw new Error("Registry not initialized!");
     }
 
-    const entity = this.registry.create();
-    this.registry.add(entity, new Transform());
+    setTimeout(() => {
+      const entity = this.registry!.create(new MapSchema<Component>());
+      this.registry!.add(entity, new Transform());
+    }, 2000);
   }
 
   onLeave(client: Client, consented: boolean) {

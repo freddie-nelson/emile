@@ -31,9 +31,12 @@ export class Entity extends Schema {
    * If a component of the same type already exists, it will be replaced.
    *
    * @param component The component to add to the entity.
+   *
+   * @returns The component instance.
    */
-  public addComponent<T extends Component>(component: T) {
+  public addComponent<T extends Component>(component: T): T {
     this.components.set(component.constructor.name, component);
+    return component;
   }
 
   /**

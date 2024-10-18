@@ -84,9 +84,11 @@ export class Registry {
    *
    * @returns The new entity's id.
    */
-  public create(): string {
+  public create(components: MapSchema<Component>): string {
     const entity = new Entity();
     this.entities.set(entity.id, entity);
+    // @ts-ignore
+    entity.components = components;
 
     if (this.type === RegistryType.SERVER) {
       this.onEntityCreated(entity);
@@ -148,8 +150,10 @@ export class Registry {
    *
    * @param id The id of the entity to add the component to.
    * @param component The component to add to the entity.
+   *
+   * @returns The component instance.
    */
-  public add(id: string, component: Component) {
+  public add<T extends Component>(id: string, component: T): T {
     if (!this.entities.has(id)) {
       Logger.errorAndThrow("Registry", `Entity with id '${id}' not found in registry.`);
     }
@@ -159,6 +163,8 @@ export class Registry {
     if (this.type === RegistryType.SERVER) {
       this.onEntityModified(this.entities.get(id)!);
     }
+
+    return component;
   }
 
   /**
@@ -187,7 +193,7 @@ export class Registry {
    *
    * @returns The component instance.
    */
-  public get(id: string, component: ComponentConstructor) {
+  public get<T extends Component>(id: string, component: new () => T): T {
     if (!this.entities.has(id)) {
       Logger.errorAndThrow("Registry", `Entity with id '${id}' not found in registry.`);
     }

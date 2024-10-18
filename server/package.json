@@ -4,10 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "dotenvx run -f .env.production -- node build/index.js",
-    "start:staging": "dotenvx run -f .env.staging -- node build/index.js",
+    "start": "dotenvx run -f .env.production -- node build/server/src/index.js",
+    "start:staging": "dotenvx run -f .env.staging -- node build/server/src/index.js",
     "dev": "dotenvx run -f .env.development -- tsx watch src/index.ts",
-    "build": "npm run clean && tsc",
+    "build": "npm run clean && tsc && tscpaths -p tsconfig.json -s ../ -o ./build",
     "clean": "rimraf build",
     "loadtest": "tsx src/loadtest/example.ts --room room --numClients 2",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -21,8 +21,10 @@
     "@dotenvx/dotenvx": "^1.20.0",
     "@types/express": "^5.0.0",
     "rimraf": "^6.0.1",
+    "tscpaths": "^0.0.9",
     "tsx": "^4.19.1",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "watcher": "^2.3.1"
   },
   "dependencies": {
     "@colyseus/core": "^0.15.52",
