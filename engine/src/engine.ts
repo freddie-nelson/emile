@@ -164,6 +164,14 @@ export default class Engine {
   }
 
   /**
+   * Disposes of the engine.
+   */
+  public dispose() {
+    this.stop();
+    this.registry.dispose();
+  }
+
+  /**
    * Adds an event listener for the given update type.
    *
    * @param type The type of the update callback.

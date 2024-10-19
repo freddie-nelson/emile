@@ -81,4 +81,12 @@ export abstract class System {
    * @param entities The entities in the registry that match the system's query.
    */
   public readonly stateUpdate?: (registry: Registry, entities: Set<Entity>) => void;
+
+  /**
+   * The function to run when the system is disposed.
+   *
+   * @param registry The registry disposing the system.
+   * @param entities The entities in the registry that match the system's query.
+   */
+  public readonly dispose?: (registry: Registry, entities: Set<Entity>) => void;
 }

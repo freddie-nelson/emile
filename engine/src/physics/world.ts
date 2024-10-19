@@ -32,7 +32,7 @@ export class PhysicsWorld extends System {
   /**
    * Creates a new physics world.
    *
-   * @parma options The options for the physics world.
+   * @param options The options for the physics world.
    */
   constructor(options: PhysicsWorldOptions) {
     super(SystemType.SERVER_AND_CLIENT, new Set([Transform, Rigidbody]), 0);

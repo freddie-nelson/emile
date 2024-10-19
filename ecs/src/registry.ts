@@ -106,6 +106,15 @@ export class Registry {
   }
 
   /**
+   * Disposes of the registry.
+   */
+  public dispose() {
+    for (const system of this.systems) {
+      system.dispose?.(this, this.queryEntities.get(system.queryKey)!);
+    }
+  }
+
+  /**
    * Runs an update for the systems in the registry.
    *
    * @param dt The delta time since the last update.
