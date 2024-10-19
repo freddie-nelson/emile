@@ -1,4 +1,11 @@
-import { CircleCollider, Collider, PolygonCollider, RectangleCollider } from "../components/collider";
+import { TypedBody } from "../matter";
+import {
+  CircleCollider,
+  Collider,
+  ColliderEvent,
+  PolygonCollider,
+  RectangleCollider,
+} from "../components/collider";
 import { Rigidbody } from "../components/rigidbody";
 import { Transform } from "../components/transform";
 import { Vec2 } from "../math/vec";
@@ -40,6 +47,8 @@ export class PhysicsWorld extends System {
       velocityIterations: options.velocityIterations,
     });
     this.setGravity(options.gravity);
+
+    this.setupMatterEvents();
   }
 
   public fixedUpdate = (registry: Registry, entities: Set<Entity>, dt: number) => {
@@ -141,7 +150,7 @@ export class PhysicsWorld extends System {
     const transform = entity.getComponent(Transform);
     const rigidbody = entity.getComponent(Rigidbody);
 
-    let body: Matter.Body;
+    let body: TypedBody;
     let collider: Collider | null = null;
 
     if (entity.hasComponent(RectangleCollider)) {
@@ -149,6 +158,8 @@ export class PhysicsWorld extends System {
       collider = c;
 
       body = Matter.Bodies.rectangle(transform.position.x, transform.position.y, c.width, c.height);
+
+      body.plugin = {};
       body.plugin.rectangleWidth = c.width;
       body.plugin.rectangleHeight = c.height;
     } else if (entity.hasComponent(CircleCollider)) {
@@ -156,6 +167,8 @@ export class PhysicsWorld extends System {
       collider = c;
 
       body = Matter.Bodies.circle(transform.position.x, transform.position.y, c.radius);
+
+      body.plugin = {};
       body.plugin.circleRadius = c.radius;
     } else if (entity.hasComponent(PolygonCollider)) {
       const c = entity.getComponent(PolygonCollider);
@@ -164,13 +177,17 @@ export class PhysicsWorld extends System {
       body = Matter.Bodies.fromVertices(transform.position.x, transform.position.y, [
         c.vertices.map((v) => v.copy()),
       ]);
+
+      body.plugin = {};
       body.plugin.polygonVertices = c.vertices.map((v) => v.copy());
     } else {
       body = Matter.Bodies.circle(transform.position.x, transform.position.y, 0.1);
+      body.plugin = {};
     }
 
     Matter.Body.scale(body, transform.scale.x, transform.scale.y);
 
+    body.plugin.entity = entity;
     body.slop = this.options.slop;
 
     rigidbody.setBody(body);
@@ -206,5 +223,39 @@ export class PhysicsWorld extends System {
     }
 
     return null;
+  }
+
+  private setupMatterEvents() {
+    Matter.Events.on(this.engine, "collisionStart", (event) =>
+      this.onMatterCollisionEvent(ColliderEvent.COLLISION_START, event.pairs)
+    );
+
+    Matter.Events.on(this.engine, "collisionEnd", (event) =>
+      this.onMatterCollisionEvent(ColliderEvent.COLLISION_END, event.pairs)
+    );
+
+    Matter.Events.on(this.engine, "collisionActive", (event) =>
+      this.onMatterCollisionEvent(ColliderEvent.COLLISION_ACTIVE, event.pairs)
+    );
+  }
+
+  private onMatterCollisionEvent(type: ColliderEvent, pairs: Matter.Pair[]) {
+    for (const pair of pairs) {
+      if (!pair.bodyA.plugin || !pair.bodyB.plugin) {
+        continue;
+      }
+
+      const entityA = (pair.bodyA as TypedBody).plugin!.entity;
+      const entityB = (pair.bodyB as TypedBody).plugin!.entity;
+      if (!entityA || !entityB) {
+        continue;
+      }
+
+      const colliderA = this.getCollider(entityA);
+      const colliderB = this.getCollider(entityB);
+
+      colliderA?.fire(type, pair, entityA, entityB);
+      colliderB?.fire(type, pair, entityB, entityA);
+    }
   }
 }

@@ -4,12 +4,26 @@ import { type } from "@colyseus/schema";
 import Matter from "matter-js";
 import { RegistryType } from "@ecs/src/registry";
 import { TypedBody } from "../matter";
+import { Entity } from "@ecs/src/entity";
 
 export enum ColliderType {
   CIRCLE,
   RECTANGLE,
   POLYGON,
 }
+
+export enum ColliderEvent {
+  COLLISION_START,
+  COLLISION_ACTIVE,
+  COLLISION_END,
+}
+
+/**
+ * Represents a collision callback.
+ *
+ * @note Entity a will always be the entity that has the collider the callback is attached to.
+ */
+export type CollisionCallback = (pair: Matter.Pair, a: Entity, b: Entity) => void;
 
 /**
  * Represents a collider component.
@@ -24,6 +38,8 @@ export abstract class Collider extends Component {
   @type("int32") public mask: number = 1;
 
   protected body: TypedBody | null = null;
+
+  private collisionCallbacks: Map<ColliderEvent, CollisionCallback[]> = new Map();
 
   constructor(registryType: RegistryType, type: ColliderType) {
     super();
@@ -94,6 +110,58 @@ export abstract class Collider extends Component {
     if (this.body) {
       this.body.collisionFilter.mask = mask;
     }
+  }
+
+  /**
+   * Adds a collision event listener.
+   *
+   * @param event The event to listen for.
+   * @param callback The callback to call when the event is triggered.
+   */
+  public on(event: ColliderEvent, callback: CollisionCallback) {
+    if (!this.collisionCallbacks.has(event)) {
+      this.collisionCallbacks.set(event, []);
+    }
+
+    this.collisionCallbacks.get(event)?.push(callback);
+  }
+
+  /**
+   * Removes a collision event listener.
+   *
+   * @param event The event to remove the callback from.
+   * @param callback The callback to remove.
+   */
+  public off(event: ColliderEvent, callback: CollisionCallback) {
+    if (!this.collisionCallbacks.has(event)) {
+      return;
+    }
+
+    const callbacks = this.collisionCallbacks.get(event)!;
+    this.collisionCallbacks.set(
+      event,
+      callbacks.filter((cb) => cb !== callback)
+    );
+  }
+
+  /**
+   * Fires a collision event.
+   *
+   * @note This should only be called by the physics world.
+   *
+   * @note Entity a should be the entity that has this collider.
+   *
+   * @param event The event to fire.
+   * @param pair The matter pair
+   * @param a The first entity
+   * @param b The second entity
+   */
+  public fire(event: ColliderEvent, pair: Matter.Pair, a: Entity, b: Entity) {
+    if (!this.collisionCallbacks.has(event)) {
+      return;
+    }
+
+    this.collisionCallbacks.get(event)?.forEach((callback) => callback(pair, a, b));
   }
 
   /**

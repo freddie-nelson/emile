@@ -62,10 +62,11 @@ export class Rigidbody extends Component {
    * @note This will only apply the force if the matter body has been created.
    *
    * @param force The force to apply.
+   * @param worldPosition The world position to apply the force at. (default: the center of the rigidbody)
    */
-  public applyForce(force: Vec2) {
+  public applyForce(force: Vec2, worldPosition?: Vec2) {
     if (this.body) {
-      Matter.Body.applyForce(this.body, this.body.position, force);
+      Matter.Body.applyForce(this.body, worldPosition ?? this.body.position, force);
     }
   }
 
