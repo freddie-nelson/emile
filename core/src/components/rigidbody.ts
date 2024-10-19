@@ -19,7 +19,12 @@ export class Rigidbody extends Component {
   @type("float32") public frictionStatic: number = 0.5;
   @type("boolean") public isStatic: boolean = false;
 
-  private body: Matter.Body | null = null;
+  /**
+   * The matter body of the rigidbody.
+   *
+   * @warning DO NOT TOUCH THIS UNLESS YOU KNOW WHAT YOU ARE DOING.
+   */
+  public body: Matter.Body | null = null;
 
   /**
    * Creates a new rigidbody.

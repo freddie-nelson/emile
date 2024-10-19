@@ -245,14 +245,33 @@ export class Registry {
   /**
    * Checks if an entity has a component.
    *
+   * If the entity or component is not found, an error will be thrown.
+   *
    * @param id The id of the entity to get the component from.
    * @param component The component to get from the entity.
    *
    * @returns The component instance.
    */
-  public get<T extends Component>(id: string, component: Constructor<T>): T {
+  public get<T extends Component>(id: string, component: Constructor<T>): T;
+
+  /**
+   * Gets an entity from the registry.
+   *
+   * If the entity is not found, an error will be thrown.
+   *
+   * @param id The id of the entity to get.
+   *
+   * @returns The entity.
+   */
+  public get(id: string): Entity;
+
+  public get(id: string, component?: ComponentConstructor) {
     if (!this.entities.has(id)) {
       Logger.errorAndThrow("Registry", `Entity with id '${id}' not found in registry.`);
+    }
+
+    if (!component) {
+      return this.entities.get(id)!;
     }
 
     return this.entities.get(id)!.getComponent(component);

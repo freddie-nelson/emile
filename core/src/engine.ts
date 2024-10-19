@@ -111,7 +111,7 @@ export default class Engine {
   public readonly physics: PhysicsWorld;
 
   private readonly options: Required<EngineOptions>;
-  private updateCallbacks: Map<UpdateCallbackType, UpdateCallback[]> = new Map();
+  private readonly updateCallbacks: Map<UpdateCallbackType, UpdateCallback[]> = new Map();
 
   private started = false;
 

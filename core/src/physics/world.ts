@@ -13,6 +13,8 @@ import { Entity } from "@ecs/src/entity";
 import { Registry } from "@ecs/src/registry";
 import { System, SystemType } from "@ecs/src/system";
 import Matter from "matter-js";
+import { Constraint } from "../components/constraint";
+import { Logger } from "@shared/src/Logger";
 
 export interface PhysicsWorldOptions {
   gravity: Vec2;
@@ -29,6 +31,7 @@ export interface PhysicsWorldOptions {
 export class PhysicsWorld extends System {
   private readonly engine: Matter.Engine;
   private readonly bodies: Map<Entity, Matter.Body> = new Map();
+  private readonly constraints: Map<Entity, Matter.Constraint> = new Map();
   private readonly bodyScale: Map<Entity, Vec2> = new Map();
   private readonly options: PhysicsWorldOptions;
 
@@ -61,6 +64,23 @@ export class PhysicsWorld extends System {
       }
     }
 
+    // constraint deletion step
+    for (const entity of this.constraints.keys()) {
+      // constraint no longer has required components for physics
+      if (!entities.has(entity) || !entity.hasComponent(Constraint)) {
+        Matter.World.remove(this.engine.world, this.constraints.get(entity)!);
+        this.constraints.delete(entity);
+      }
+
+      const constraint = entity.getComponent(Constraint);
+
+      // entity B no longer exists or is not a valid physics entity anymore
+      if (!registry.has(constraint.entityBId) || !this.bodies.has(registry.get(constraint.entityBId))) {
+        Matter.World.remove(this.engine.world, this.constraints.get(entity)!);
+        this.constraints.delete(entity);
+      }
+    }
+
     // creation step
     for (const entity of entities) {
       const rigidbody = entity.getComponent(Rigidbody);
@@ -79,6 +99,7 @@ export class PhysicsWorld extends System {
         this.createBody(entity);
       }
 
+      // update from transform
       const transform = entity.getComponent(Transform);
       const body = rigidbody.getBody()!;
 
@@ -94,6 +115,33 @@ export class PhysicsWorld extends System {
       if (scale.x !== transform.scale.x || scale.y !== transform.scale.y) {
         Matter.Body.scale(body, transform.scale.x / scale.x, transform.scale.y / scale.y);
         this.bodyScale.set(entity, transform.scale.copy());
+      }
+    }
+
+    // constraint creation step
+    for (const entity of entities) {
+      if (!entity.hasComponent(Constraint)) {
+        continue;
+      }
+
+      const constraint = entity.getComponent(Constraint);
+
+      // constraint needs to be created but already exists, remove it
+      if (!constraint.getConstraint() && this.constraints.has(entity)) {
+        Matter.World.remove(this.engine.world, this.constraints.get(entity)!);
+        this.constraints.delete(entity);
+      }
+
+      // constraint needs to be created, create it
+      if (!constraint.getConstraint()) {
+        if (!registry.has(constraint.entityBId)) {
+          Logger.errorAndThrow(
+            "CORE",
+            `Entity B with id '${constraint.entityBId}' does not exist for constraint.`
+          );
+        }
+
+        this.createConstraint(entity, registry.get(constraint.entityBId));
       }
     }
 
@@ -211,6 +259,31 @@ export class PhysicsWorld extends System {
     this.bodyScale.set(entity, transform.scale.copy());
 
     Matter.World.add(this.engine.world, body);
+  }
+
+  private createConstraint(entityA: Entity, entityB: Entity) {
+    const constraint = entityA.getComponent(Constraint);
+
+    const bodyA = this.bodies.get(entityA)!;
+    const bodyB = this.bodies.get(entityB)!;
+    if (!bodyA || !bodyB) {
+      Logger.errorAndThrow("CORE", "Missing bodies during constraint creation.");
+    }
+
+    const c = Matter.Constraint.create({
+      bodyA,
+      bodyB,
+      pointA: constraint.pointA,
+      pointB: constraint.pointB,
+      stiffness: constraint.stiffness,
+      damping: constraint.damping,
+      length: constraint.length === -1 ? undefined : constraint.length,
+    });
+
+    constraint.setConstraint(c);
+    this.constraints.set(entityA, c);
+
+    Matter.World.add(this.engine.world, c);
   }
 
   private getCollider(entity: Entity): Collider | null {

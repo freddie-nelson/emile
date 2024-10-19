@@ -37,7 +37,12 @@ export abstract class Collider extends Component {
   @type("uint32") public category: number = 1;
   @type("int32") public mask: number = 1;
 
-  protected body: TypedBody | null = null;
+  /**
+   * The matter body of the collider.
+   *
+   * @warning DO NOT TOUCH THIS UNLESS YOU KNOW WHAT YOU ARE DOING.
+   */
+  public body: TypedBody | null = null;
 
   private collisionCallbacks: Map<ColliderEvent, CollisionCallback[]> = new Map();
 
