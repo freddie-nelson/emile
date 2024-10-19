@@ -17,11 +17,11 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@core/*": ["../core/*"],
+      "@engine/*": ["../engine/*"],
       "@ecs/*": ["../ecs/*"],
       "@state/*": ["../state/*"],
       "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src", "../core", "../ecs", "../state", "../shared"]
+  "include": ["src", "../engine", "../ecs", "../state", "../shared"]
 }

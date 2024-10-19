@@ -1,19 +1,13 @@
 import { TypedBody } from "../matter";
-import {
-  CircleCollider,
-  Collider,
-  ColliderEvent,
-  PolygonCollider,
-  RectangleCollider,
-} from "../components/collider";
-import { Rigidbody } from "../components/rigidbody";
-import { Transform } from "../components/transform";
+import { CircleCollider, Collider, ColliderEvent, PolygonCollider, RectangleCollider } from "./collider";
+import { Rigidbody } from "./rigidbody";
+import { Transform } from "../core/transform";
 import { Vec2 } from "../math/vec";
 import { Entity } from "@ecs/src/entity";
 import { Registry } from "@ecs/src/registry";
 import { System, SystemType } from "@ecs/src/system";
 import Matter from "matter-js";
-import { Constraint } from "../components/constraint";
+import { Constraint } from "./constraint";
 import { Logger } from "@shared/src/Logger";
 
 export interface PhysicsWorldOptions {
