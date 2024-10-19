@@ -1,5 +1,5 @@
 import { Logger } from "@shared/src/Logger";
-import { Component, ComponentConstructor } from "./component";
+import { Component, ComponentConstructor, Constructor } from "./component";
 import { System, SystemType } from "./system";
 import { MapSchema, Schema } from "@colyseus/schema";
 import { Entity, EntityQuery } from "./entity";
@@ -12,6 +12,32 @@ export enum RegistryType {
 }
 
 export class Registry {
+  private static entityQueryKeyCache: Map<EntityQuery, string> = new Map();
+
+  /**
+   * Gets the key for an entity query.
+   *
+   * This is used internally by the registry for caching.
+   *
+   * @param query The query to get the key for.
+   *
+   * @returns The key for the query.
+   */
+  static getEntityQueryKey(query: EntityQuery) {
+    if (this.entityQueryKeyCache.has(query)) {
+      return this.entityQueryKeyCache.get(query)!;
+    }
+
+    const key = Array.from(query.values())
+      .map((component) => component.name)
+      .sort()
+      .join(",");
+
+    this.entityQueryKeyCache.set(query, key);
+
+    return key;
+  }
+
   /**
    * The systems in the registry.
    *
@@ -76,6 +102,37 @@ export class Registry {
       this.entities.onRemove((entity, key) => {
         this.onEntityDestroyed(entity);
       });
+    }
+  }
+
+  /**
+   * Runs an update for the systems in the registry.
+   *
+   * @param dt The delta time since the last update.
+   */
+  public update(dt: number) {
+    for (const system of this.systems) {
+      system.update?.(this, this.queryEntities.get(system.queryKey)!, dt);
+    }
+  }
+
+  /**
+   * Runs a fixed update for the systems in the registry.
+   *
+   * @param dt The delta time since the last fixed update. (this should be constant)
+   */
+  public fixedUpdate(dt: number) {
+    for (const system of this.systems) {
+      system.fixedUpdate?.(this, this.queryEntities.get(system.queryKey)!, dt);
+    }
+  }
+
+  /**
+   * Runs a state update for the systems in the registry.
+   */
+  public stateUpdate() {
+    for (const system of this.systems) {
+      system.stateUpdate?.(this, this.queryEntities.get(system.queryKey)!);
     }
   }
 
@@ -193,7 +250,7 @@ export class Registry {
    *
    * @returns The component instance.
    */
-  public get<T extends Component>(id: string, component: new () => T): T {
+  public get<T extends Component>(id: string, component: Constructor<T>): T {
     if (!this.entities.has(id)) {
       Logger.errorAndThrow("Registry", `Entity with id '${id}' not found in registry.`);
     }
@@ -229,6 +286,8 @@ export class Registry {
     }
 
     this.systems.push(system);
+    this.systems.sort((a, b) => b.priority - a.priority);
+
     this.updateEntityMaps();
   }
 
@@ -246,6 +305,8 @@ export class Registry {
     }
 
     this.systems.splice(index, 1);
+    this.systems.sort((a, b) => b.priority - a.priority);
+
     this.updateEntityMaps();
   }
 
@@ -275,28 +336,12 @@ export class Registry {
     );
   }
 
-  private entityQueryKeyCache: Map<EntityQuery, string> = new Map();
-  private getEntityQueryKey(query: EntityQuery) {
-    if (this.entityQueryKeyCache.has(query)) {
-      return this.entityQueryKeyCache.get(query)!;
-    }
-
-    const key = Array.from(query.values())
-      .map((component) => component.name)
-      .sort()
-      .join(",");
-
-    this.entityQueryKeyCache.set(query, key);
-
-    return key;
-  }
-
   private getAllEntityQueries() {
     const queries: EntityQuery[] = [];
     const keys = new Set<string>();
 
     for (const system of this.systems) {
-      const k = this.getEntityQueryKey(system.query);
+      const k = Registry.getEntityQueryKey(system.query);
       if (!keys.has(k)) {
         queries.push(system.query);
         keys.add(k);
@@ -313,14 +358,14 @@ export class Registry {
     // reset the query entities
     this.queryEntities.clear();
     for (const query of this.entityQueries) {
-      this.queryEntities.set(this.getEntityQueryKey(query), new Set());
+      this.queryEntities.set(Registry.getEntityQueryKey(query), new Set());
     }
 
     // add entities to the query entities
     for (const entity of this.entities.values()) {
       for (const query of this.entityQueries) {
         if (entity.matchesQuery(query)) {
-          this.queryEntities.get(this.getEntityQueryKey(query))!.add(entity);
+          this.queryEntities.get(Registry.getEntityQueryKey(query))!.add(entity);
         }
       }
     }
@@ -329,16 +374,16 @@ export class Registry {
   private updateEntityMapsForEntity(entity: Entity) {
     for (const query of this.entityQueries) {
       if (entity.matchesQuery(query)) {
-        this.queryEntities.get(this.getEntityQueryKey(query))!.add(entity);
+        this.queryEntities.get(Registry.getEntityQueryKey(query))!.add(entity);
       } else {
-        this.queryEntities.get(this.getEntityQueryKey(query))!.delete(entity);
+        this.queryEntities.get(Registry.getEntityQueryKey(query))!.delete(entity);
       }
     }
   }
 
   private deleteEntityFromEntityMaps(entity: Entity) {
     for (const query of this.entityQueries) {
-      this.queryEntities.get(this.getEntityQueryKey(query))!.delete(entity);
+      this.queryEntities.get(Registry.getEntityQueryKey(query))!.delete(entity);
     }
   }
 }

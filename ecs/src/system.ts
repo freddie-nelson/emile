@@ -1,4 +1,5 @@
 import { Entity, EntityQuery } from "./entity";
+import { Registry } from "./registry";
 
 export enum SystemType {
   CLIENT,
@@ -15,6 +16,15 @@ export abstract class System {
    * This should not be changed after the system is created.
    */
   public readonly query: EntityQuery;
+
+  /**
+   * The key of the query.
+   *
+   * This is used internally by the registry.
+   *
+   * Do not change this value.
+   */
+  public readonly queryKey: string;
 
   /**
    * The priority of the system.
@@ -42,27 +52,33 @@ export abstract class System {
   constructor(type: SystemType, query: EntityQuery, priority = 0) {
     this.type = type;
     this.query = query;
+    this.queryKey = Registry.getEntityQueryKey(query);
     this.priority = priority;
   }
 
   /**
    * The function to run on updates.
    *
+   * @param registry The registry updating the system.
+   * @param entities The entities in the registry that match the system's query.
    * @param dt The delta time since the last update.
    */
-  public readonly update?: (entities: Entity[], dt: number) => void;
+  public readonly update?: (registry: Registry, entities: Set<Entity>, dt: number) => void;
 
   /**
    * The function to run on fixed updates.
    *
+   * @param registry The registry updating the system.
+   * @param entities The entities in the registry that match the system's query.
    * @param dt The delta time since the last fixed update.
    */
-  public readonly fixedUpdate?: (entities: Entity[], dt: number) => void;
+  public readonly fixedUpdate?: (registry: Registry, entities: Set<Entity>, dt: number) => void;
 
   /**
    * The function to run on state updates.
    *
-   * @param dt The delta time since the last state update.
+   * @param registry The registry updating the system.
+   * @param entities The entities in the registry that match the system's query.
    */
-  public readonly stateUpdate?: (entities: Entity[], dt: number) => void;
+  public readonly stateUpdate?: (registry: Registry, entities: Set<Entity>) => void;
 }

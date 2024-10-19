@@ -1,7 +1,7 @@
 import { MapSchema } from "@colyseus/schema";
 import { Component } from "@ecs/src/component";
 import { Registry, RegistryType } from "@ecs/src/registry";
-import { Transform } from "@state/src/components/transform";
+import { Transform } from "@core/src/components/transform";
 import { State } from "@state/src/state";
 import { Client, Room } from "colyseus";
 

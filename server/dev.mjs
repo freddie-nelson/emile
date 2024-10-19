@@ -72,6 +72,8 @@ const stop = async () => {
       resolve();
     });
 
+    p.stdout = null;
+    p.stderr = null;
     p.kill("SIGINT");
     killed = true;
   });

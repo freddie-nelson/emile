@@ -12,7 +12,14 @@
     "forceConsistentCasingInFileNames": true,
     "useDefineForClassFields": false,
     "resolveJsonModule": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+
+    "baseUrl": ".",
+    "paths": {
+      "@ecs/*": ["../ecs/*"],
+      "@state/*": ["../state/*"],
+      "@shared/*": ["../shared/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "../ecs", "../state", "../shared"]
 }

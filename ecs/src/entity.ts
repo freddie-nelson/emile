@@ -1,5 +1,5 @@
 import { MapSchema, Schema, type } from "@colyseus/schema";
-import { Component, ComponentConstructor } from "./component";
+import { Component, ComponentConstructor, Constructor } from "./component";
 import { Logger } from "@shared/src/Logger";
 
 export type EntityQuery = Set<ComponentConstructor>;
@@ -46,7 +46,7 @@ export class Entity extends Schema {
    *
    * @param component The component to remove from the entity.
    */
-  public removeComponent<T extends Component>(component: new () => T) {
+  public removeComponent<T extends Component>(component: Constructor<T>) {
     if (!this.components.has(component.name)) {
       return;
     }
@@ -63,7 +63,7 @@ export class Entity extends Schema {
    *
    * @returns The component instance.
    */
-  public getComponent<T extends Component>(component: new () => T): T {
+  public getComponent<T extends Component>(component: Constructor<T>): T {
     if (!this.components.has(component.name)) {
       Logger.errorAndThrow("ECS", `Entity with id '${this.id}' does not have component '${component.name}'`);
     }
@@ -78,7 +78,7 @@ export class Entity extends Schema {
    *
    * @returns True if the entity has the component, false otherwise.
    */
-  public hasComponent<T extends Component>(component: new () => T) {
+  public hasComponent<T extends Component>(component: Constructor<T>) {
     return this.components.has(component.name);
   }
 
