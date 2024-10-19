@@ -3,7 +3,7 @@ import { spawn } from "child_process";
 
 const watcher = new Watcher("../", {
   recursive: true,
-  ignore: /node_modules|build|client/,
+  ignore: /node_modules|build|client|\.git/,
 });
 
 let p = null;
@@ -20,7 +20,7 @@ const runCommand = (name, command, args) => {
       stdio: "inherit",
     });
 
-    p.on("exit", (code) => {
+    p.once("exit", (code) => {
       console.log(`[DEV] ${name} exited with code ${code}.`);
       p = null;
 
@@ -61,7 +61,7 @@ const stop = async () => {
   console.log("[DEV] Stopping server...");
 
   stopPromise = new Promise((resolve) => {
-    p.on("exit", () => {
+    p.once("exit", () => {
       if (pName === "start") {
         killed = false;
       }
