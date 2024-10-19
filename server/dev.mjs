@@ -3,56 +3,126 @@ import { spawn } from "child_process";
 
 const watcher = new Watcher("../", {
   recursive: true,
-  ignore: /node_modules/,
+  ignore: /node_modules|build|client/,
 });
 
 let p = null;
+let pName = "";
+let killed = false;
 
-console.log("Starting development server...");
+console.log("[DEV] Starting development server...");
 
-const runCommand = (command, args) => {
-  return new Promise((resolve, reject) => {
+const runCommand = (name, command, args) => {
+  pName = name;
+
+  return new Promise((resolve) => {
     p = spawn(command, args, {
       stdio: "inherit",
     });
 
     p.on("exit", (code) => {
+      console.log(`[DEV] ${name} exited with code ${code}.`);
+      p = null;
+
       if (code === 0) {
-        resolve();
+        resolve(true);
       } else {
-        reject();
+        resolve(false);
       }
     });
   });
 };
 
 const build = async () => {
-  await runCommand("pnpm.cmd", ["run", "build"]);
-  await runCommand("pnpm.cmd", ["run", "start:dev"]);
-};
+  console.log("[DEV] Building server...");
 
-const stop = () => {
-  if (p) {
-    p.kill();
+  const res = await runCommand("build", "pnpm.cmd", ["run", "build"]);
+  if (killed) {
+    killed = false;
+    console.log("[DEV] Build was killed.");
+    return;
   }
+
+  if (!res) {
+    console.log("[DEV] Failed to build server.");
+    console.log("[DEV] Waiting for changes...");
+    return;
+  }
+
+  runCommand("start", "node", ["build/server/src/index.js", "--env-file", ".env.development"]);
 };
 
-const restart = () => {
-  stop();
-  build();
+let stopPromise = null;
+const stop = async () => {
+  if (!p) {
+    return;
+  }
+
+  console.log("[DEV] Stopping server...");
+
+  stopPromise = new Promise((resolve) => {
+    p.on("exit", () => {
+      if (pName === "start") {
+        killed = false;
+      }
+
+      p = null;
+      pName = "";
+      stopPromise = null;
+      resolve();
+    });
+
+    p.kill("SIGINT");
+    killed = true;
+  });
+
+  return stopPromise;
 };
 
-watcher.on("ready", () => {
-  restart();
-});
+let restarting = false;
+let stopRestart = false;
 
-watcher.on("all", () => {
-  restart();
+const restart = async () => {
+  if (stopRestart) {
+    return;
+  }
+
+  if (restarting) {
+    stopRestart = true;
+
+    if (stopPromise) {
+      await stopPromise;
+    } else {
+      await stop();
+    }
+
+    stopRestart = false;
+  }
+
+  console.log("[DEV] Restarting server...");
+
+  restarting = true;
+  await stop();
+  if (stopRestart) {
+    stopRestart = false;
+    return;
+  }
+
+  await build();
+  restarting = false;
+};
+
+["ready", "add", "change", "unlink", "unlinkDir"].forEach((event) => {
+  watcher.on(event, () => {
+    restart();
+  });
 });
 
 ["SIGINT", "SIGTERM"].forEach((signal) => {
-  process.on(signal, () => {
-    stop();
+  process.on(signal, async () => {
+    console.log(`[DEV] Received ${signal}, stopping server...`);
+    await stop();
+
     process.exit();
   });
 });

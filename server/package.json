@@ -6,8 +6,9 @@
   "scripts": {
     "start": "dotenvx run -f .env.production -- node build/server/src/index.js",
     "start:staging": "dotenvx run -f .env.staging -- node build/server/src/index.js",
-    "dev": "dotenvx run -f .env.development -- tsx watch src/index.ts",
-    "build": "npm run clean && tsc && tscpaths -p tsconfig.json -s ../ -o ./build",
+    "start:dev": "dotenvx run -f .env.development -- node build/server/src/index.js",
+    "dev": "node dev.mjs",
+    "build": "pnpm clean && tsc && tscpaths -p tsconfig.json -s ../ -o ./build",
     "clean": "rimraf build",
     "loadtest": "tsx src/loadtest/example.ts --room room --numClients 2",
     "test": "echo \"Error: no test specified\" && exit 1"
