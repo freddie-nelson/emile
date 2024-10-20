@@ -1,6 +1,6 @@
 import Engine from "../engine";
 
-export type ActionHandler<T> = (engine: Engine, action: string, data: T) => void;
+export type ActionHandler<T> = (engine: Engine, action: string, data: T, dt: number) => void;
 
 export type ActionDataValidator = (action: string, data: any) => boolean;
 
@@ -30,10 +30,11 @@ export class ActionsManager {
    * @note Only use this if you know what you're doing.
    *
    * @param engine The engine to flushing the queue.
+   * @param dt The delta time for the update calling the flush.
    */
-  public flush(engine: Engine) {
+  public flush(engine: Engine, dt: number) {
     for (const action of this.actionQueue) {
-      this.fire(engine, action.action, action.data);
+      this.fire(engine, action.action, action.data, dt);
     }
   }
 
@@ -45,8 +46,9 @@ export class ActionsManager {
    * @param engine The engine firing the action.
    * @param action The action to fire.
    * @param data The action's data.
+   * @param dt The delta time for the action.
    */
-  public fire(engine: Engine, action: string, data: any) {
+  public fire(engine: Engine, action: string, data: any, dt: number) {
     const handler = this.handlers.get(action);
     if (!handler) {
       return;
@@ -57,7 +59,7 @@ export class ActionsManager {
       return;
     }
 
-    handler(engine, action, data);
+    handler(engine, action, data, dt);
   }
 
   /**

@@ -1,7 +1,7 @@
-import { System, SystemType } from "@ecs/src/system";
+import { System, SystemType, SystemUpdateData } from "../ecs/system";
 import { Transform } from "../core/transform";
-import { Registry } from "@ecs/src/registry";
-import { Entity, EntityQuery } from "@ecs/src/entity";
+import { Registry } from "../ecs/registry";
+import { Entity, EntityQuery } from "../ecs/entity";
 import { Application, ColorSource, Sprite } from "pixi.js";
 import { Logger } from "@shared/src/Logger";
 import { Renderable } from "./renderable";
@@ -109,7 +109,7 @@ export class Renderer extends System {
     }
   }
 
-  public update = (registry: Registry, entities: Set<Entity>, dt: number) => {
+  public update = ({ registry, entities, dt }: SystemUpdateData) => {
     // delete sprites for entities that no longer exist
     for (const entity of this.sprites.keys()) {
       if (entities.has(entity)) {

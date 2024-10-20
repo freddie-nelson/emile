@@ -1,6 +1,6 @@
 import { type } from "@colyseus/schema";
-import { Component } from "@ecs/src/component";
-import { RegistryType } from "@ecs/src/registry";
+import { Component } from "../ecs/component";
+import { RegistryType } from "../ecs/registry";
 import Matter from "matter-js";
 import { Vec2 } from "../math/vec";
 

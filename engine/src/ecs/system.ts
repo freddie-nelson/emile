@@ -1,3 +1,4 @@
+import Engine from "../engine";
 import { Entity, EntityQuery } from "./entity";
 import { Registry } from "./registry";
 
@@ -5,6 +6,13 @@ export enum SystemType {
   CLIENT,
   SERVER,
   SERVER_AND_CLIENT,
+}
+
+export interface SystemUpdateData {
+  readonly engine: Engine;
+  readonly registry: Registry;
+  readonly entities: Set<Entity>;
+  readonly dt: number;
 }
 
 export abstract class System {
@@ -59,34 +67,28 @@ export abstract class System {
   /**
    * The function to run on updates.
    *
-   * @param registry The registry updating the system.
-   * @param entities The entities in the registry that match the system's query.
-   * @param dt The delta time since the last update.
+   * @param data The data for the update.
    */
-  public readonly update?: (registry: Registry, entities: Set<Entity>, dt: number) => void;
+  public readonly update?: (data: SystemUpdateData) => void;
 
   /**
    * The function to run on fixed updates.
    *
-   * @param registry The registry updating the system.
-   * @param entities The entities in the registry that match the system's query.
-   * @param dt The delta time since the last fixed update.
+   * @param data The data for the update.
    */
-  public readonly fixedUpdate?: (registry: Registry, entities: Set<Entity>, dt: number) => void;
+  public readonly fixedUpdate?: (data: SystemUpdateData) => void;
 
   /**
    * The function to run on state updates.
    *
-   * @param registry The registry updating the system.
-   * @param entities The entities in the registry that match the system's query.
+   * @param data The data for the update.
    */
-  public readonly stateUpdate?: (registry: Registry, entities: Set<Entity>) => void;
+  public readonly stateUpdate?: (data: SystemUpdateData) => void;
 
   /**
    * The function to run when the system is disposed.
    *
-   * @param registry The registry disposing the system.
-   * @param entities The entities in the registry that match the system's query.
+   * @param data The data for the disposal.
    */
-  public readonly dispose?: (registry: Registry, entities: Set<Entity>) => void;
+  public readonly dispose?: (data: SystemUpdateData) => void;
 }

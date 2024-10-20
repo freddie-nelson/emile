@@ -1,4 +1,4 @@
-import { Entity } from "@ecs/src/entity";
+import { Entity } from "./ecs/entity";
 
 export interface TypedBody extends Matter.Body {
   plugin: {

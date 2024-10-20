@@ -1,8 +1,9 @@
 import { Logger } from "@shared/src/Logger";
 import { Component, ComponentConstructor, Constructor } from "./component";
-import { System, SystemType } from "./system";
-import { MapSchema, Schema } from "@colyseus/schema";
+import { System, SystemType, SystemUpdateData } from "./system";
+import { MapSchema } from "@colyseus/schema";
 import { Entity, EntityQuery } from "./entity";
+import Engine from "../engine";
 
 export type EntityMap = MapSchema<Entity>;
 
@@ -107,41 +108,47 @@ export class Registry {
 
   /**
    * Disposes of the registry.
+   *
+   * @param engine The engine owning the registry.
    */
-  public dispose() {
+  public dispose(engine: Engine) {
     for (const system of this.systems) {
-      system.dispose?.(this, this.queryEntities.get(system.queryKey)!);
+      system.dispose?.(this.createSystemUpdateData(engine, system));
     }
   }
 
   /**
    * Runs an update for the systems in the registry.
    *
+   * @param engine The engine owning the registry.
    * @param dt The delta time since the last update.
    */
-  public update(dt: number) {
+  public update(engine: Engine, dt: number) {
     for (const system of this.systems) {
-      system.update?.(this, this.queryEntities.get(system.queryKey)!, dt);
+      system.update?.(this.createSystemUpdateData(engine, system, dt));
     }
   }
 
   /**
    * Runs a fixed update for the systems in the registry.
    *
+   * @param engine The engine owning the registry.
    * @param dt The delta time since the last fixed update. (this should be constant)
    */
-  public fixedUpdate(dt: number) {
+  public fixedUpdate(engine: Engine, dt: number) {
     for (const system of this.systems) {
-      system.fixedUpdate?.(this, this.queryEntities.get(system.queryKey)!, dt);
+      system.fixedUpdate?.(this.createSystemUpdateData(engine, system, dt));
     }
   }
 
   /**
    * Runs a state update for the systems in the registry.
+   *
+   * @param engine The engine owning the registry.
    */
-  public stateUpdate() {
+  public stateUpdate(engine: Engine) {
     for (const system of this.systems) {
-      system.stateUpdate?.(this, this.queryEntities.get(system.queryKey)!);
+      system.stateUpdate?.(this.createSystemUpdateData(engine, system));
     }
   }
 
@@ -413,5 +420,14 @@ export class Registry {
     for (const query of this.entityQueries) {
       this.queryEntities.get(Registry.getEntityQueryKey(query))!.delete(entity);
     }
+  }
+
+  private createSystemUpdateData(engine: Engine, system: System, dt: number = -1): SystemUpdateData {
+    return {
+      engine: engine,
+      registry: this,
+      entities: this.queryEntities.get(system.queryKey)!,
+      dt,
+    };
   }
 }

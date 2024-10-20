@@ -3,9 +3,9 @@ import { CircleCollider, Collider, ColliderEvent, PolygonCollider, RectangleColl
 import { Rigidbody } from "./rigidbody";
 import { Transform } from "../core/transform";
 import { Vec2 } from "../math/vec";
-import { Entity } from "@ecs/src/entity";
-import { Registry } from "@ecs/src/registry";
-import { System, SystemType } from "@ecs/src/system";
+import { Entity } from "../ecs/entity";
+import { Registry } from "../ecs/registry";
+import { System, SystemType, SystemUpdateData } from "../ecs/system";
 import Matter from "matter-js";
 import { Constraint } from "./constraint";
 import { Logger } from "@shared/src/Logger";
@@ -48,7 +48,7 @@ export class PhysicsWorld extends System {
     this.setupMatterEvents();
   }
 
-  public fixedUpdate = (registry: Registry, entities: Set<Entity>, dt: number) => {
+  public fixedUpdate = ({ registry, entities, dt }: SystemUpdateData) => {
     // deletion step
     for (const entity of this.bodies.keys()) {
       // body no longer has required components for physics

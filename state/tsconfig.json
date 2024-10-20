@@ -16,8 +16,8 @@
 
     "baseUrl": ".",
     "paths": {
-      "@ecs/*": ["../ecs/*"]
+      "@engine/*": ["../engine/*"]
     }
   },
-  "include": ["src", "../ecs"]
+  "include": ["src", "../engine"]
 }

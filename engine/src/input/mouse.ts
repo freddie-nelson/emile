@@ -1,4 +1,4 @@
-import { Vec2 } from "src/math/vec";
+import { Vec2 } from "../math/vec";
 
 export enum MouseListenerType {
   DOWN,

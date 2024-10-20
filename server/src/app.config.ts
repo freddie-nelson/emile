@@ -4,13 +4,14 @@ import { playground } from "@colyseus/playground";
 import { DefaultRoom } from "./rooms/Room";
 import expressBasicAuth from "express-basic-auth";
 import { env } from "./helpers/env";
+import { RoomName } from "@shared/src/room";
 
 export default config({
   initializeGameServer: (gameServer) => {
     /**
      * Define your room handlers:
      */
-    gameServer.define("room", DefaultRoom);
+    gameServer.define("room" satisfies RoomName, DefaultRoom);
   },
 
   initializeExpress: (app) => {

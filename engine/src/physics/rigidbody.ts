@@ -1,8 +1,8 @@
 import { Vec2 } from "../math/vec";
-import { Component } from "@ecs/src/component";
+import { Component } from "../ecs/component";
 import { type } from "@colyseus/schema";
 import Matter from "matter-js";
-import { RegistryType } from "@ecs/src/registry";
+import { RegistryType } from "../ecs/registry";
 
 /**
  * Represents a rigidbody component.

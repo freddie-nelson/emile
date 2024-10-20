@@ -18,7 +18,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@engine/*": ["../engine/*"]
+      "@engine/*": ["../engine/*"],
+      "@shared/*": ["../shared/*"],
+      "@state/*": ["../state/*"]
     },
 
     /* Linting */
@@ -27,5 +29,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "../engine"]
+  "include": ["src", "../engine", "../shared", "../state"]
 }

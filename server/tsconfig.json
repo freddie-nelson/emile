@@ -18,7 +18,6 @@
     "paths": {
       "@/*": ["src/*"],
       "@engine/*": ["../engine/*"],
-      "@ecs/*": ["../ecs/*"],
       "@state/*": ["../state/*"],
       "@shared/*": ["../shared/*"]
     }

@@ -1,4 +1,4 @@
-import { Registry, RegistryType } from "@ecs/src/registry";
+import { Registry, RegistryType } from "./ecs/registry";
 import { State } from "@state/src/state";
 import { PhysicsWorld } from "./physics/world";
 import { Vec2 } from "./math/vec";
@@ -177,7 +177,7 @@ export default class Engine {
    */
   public dispose() {
     this.stop();
-    this.registry.dispose();
+    this.registry.dispose(this);
   }
 
   /**
@@ -186,7 +186,7 @@ export default class Engine {
    * @param type The type of the update callback.
    * @param callback The callback to call when the update type is triggered.
    */
-  public onUpdate(type: UpdateCallbackType, callback: UpdateCallback) {
+  public on(type: UpdateCallbackType, callback: UpdateCallback) {
     if (!this.updateCallbacks.has(type)) {
       this.updateCallbacks.set(type, []);
     }
@@ -200,7 +200,7 @@ export default class Engine {
    * @param type The type of the update callback.
    * @param callback The callback to remove.
    */
-  public offUpdate(type: UpdateCallbackType, callback: UpdateCallback) {
+  public off(type: UpdateCallbackType, callback: UpdateCallback) {
     if (!this.updateCallbacks.has(type)) {
       return;
     }
@@ -291,7 +291,7 @@ export default class Engine {
     this.updateCallbacks.get(UpdateCallbackType.PRE_UPDATE)?.forEach((callback) => callback(dt));
 
     // update
-    this.registry.update(dt);
+    this.registry.update(this, dt);
 
     // post
     this.updateCallbacks.get(UpdateCallbackType.POST_UPDATE)?.forEach((callback) => callback(dt));
@@ -305,13 +305,13 @@ export default class Engine {
     }
 
     // process actions
-    this.actions.flush(this);
+    this.actions.flush(this, dt);
 
     // pre
     this.updateCallbacks.get(UpdateCallbackType.PRE_FIXED_UPDATE)?.forEach((callback) => callback(dt));
 
     // update
-    this.registry.fixedUpdate(dt);
+    this.registry.fixedUpdate(this, dt);
 
     // post
     this.updateCallbacks.get(UpdateCallbackType.POST_FIXED_UPDATE)?.forEach((callback) => callback(dt));
@@ -326,7 +326,7 @@ export default class Engine {
     this.updateCallbacks.get(UpdateCallbackType.PRE_STATE_UPDATE)?.forEach((callback) => callback(0));
 
     // update
-    this.registry.stateUpdate();
+    this.registry.stateUpdate(this);
 
     // post
     this.updateCallbacks.get(UpdateCallbackType.POST_STATE_UPDATE)?.forEach((callback) => callback(0));

@@ -16,7 +16,6 @@
 
     "baseUrl": ".",
     "paths": {
-      "@ecs/*": ["../ecs/*"],
       "@state/*": ["../state/*"],
       "@shared/*": ["../shared/*"]
     }

@@ -1,5 +1,5 @@
 import { type } from "@colyseus/schema";
-import { Component } from "@ecs/src/component";
+import { Component } from "../ecs/component";
 import { Vec2 } from "../math/vec";
 
 export class Transform extends Component {
