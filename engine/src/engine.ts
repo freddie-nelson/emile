@@ -3,6 +3,7 @@ import { State } from "@state/src/state";
 import { PhysicsWorld } from "./physics/world";
 import { Vec2 } from "./math/vec";
 import { Logger } from "@shared/src/Logger";
+import { ActionsManager } from "./core/actions";
 
 export enum EngineType {
   SERVER,
@@ -105,10 +106,18 @@ const defaultEngineOptions: Partial<EngineOptions> = {
   colliderSlop: 0.05,
 };
 
+/**
+ * The engine class.
+ *
+ * The engine is the core of the game. It manages the registry, physics world, and update loop.
+ *
+ * Actions are processed just before the fixed update step.
+ */
 export default class Engine {
   public readonly type: EngineType;
   public readonly registry: Registry;
   public readonly physics: PhysicsWorld;
+  public readonly actions: ActionsManager = new ActionsManager();
 
   private readonly options: Required<EngineOptions>;
   private readonly updateCallbacks: Map<UpdateCallbackType, UpdateCallback[]> = new Map();
@@ -294,6 +303,9 @@ export default class Engine {
     if (!this.started) {
       return;
     }
+
+    // process actions
+    this.actions.flush(this);
 
     // pre
     this.updateCallbacks.get(UpdateCallbackType.PRE_FIXED_UPDATE)?.forEach((callback) => callback(dt));
