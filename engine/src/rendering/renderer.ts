@@ -4,6 +4,7 @@ import { Registry } from "@ecs/src/registry";
 import { Entity, EntityQuery } from "@ecs/src/entity";
 import { Application, ColorSource, Sprite } from "pixi.js";
 import { Logger } from "@shared/src/Logger";
+import { Renderable } from "./renderable";
 
 export interface RendererOptions {
   /**
@@ -99,7 +100,7 @@ export class Renderer extends System {
    * @param options The options for the renderer.
    */
   constructor(options: RendererOptions) {
-    super(SystemType.CLIENT, new Set([Transform]), 0);
+    super(SystemType.CLIENT, new Set([Transform, Renderable]), 0);
 
     this.options = { ...defaultRendererOptions, ...options } as Required<RendererOptions>;
 

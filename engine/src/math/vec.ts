@@ -26,6 +26,11 @@ export class Vec2 extends Schema {
     this.y = y;
   }
 
+  public set(x: number, y: number): void {
+    this.x = x;
+    this.y = y;
+  }
+
   public add(vec: Vec2): Vec2 {
     return new Vec2(this.x + vec.x, this.y + vec.y);
   }
