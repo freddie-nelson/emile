@@ -7,4 +7,9 @@ export interface RoomMetadata {
 export enum RoomMessage {
   JOIN_SUCCESS,
   JOIN_FAILURE,
+  START_GAME,
+}
+
+export interface RoomJoinOptions {
+  name: string;
 }

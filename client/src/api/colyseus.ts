@@ -1,5 +1,5 @@
-import { RoomMessage, RoomMetadata, RoomName } from "@shared/src/room";
-import { Client, JoinOptions, Room, RoomAvailable } from "colyseus.js";
+import { RoomJoinOptions, RoomMessage, RoomMetadata, RoomName } from "@shared/src/room";
+import { Client, Room, RoomAvailable } from "colyseus.js";
 
 export class ColyseusClient {
   public readonly url: string;
@@ -10,7 +10,7 @@ export class ColyseusClient {
     this.client = new Client(this.url);
   }
 
-  public async joinOrCreate<T>(room: RoomName, options?: JoinOptions): Promise<Room<T>> {
+  public async joinOrCreate<T>(room: RoomName, options: RoomJoinOptions): Promise<Room<T>> {
     const rooms = await this.getAvailableRooms<RoomMetadata>(room);
     const availableRooms = rooms.filter((r) => r.metadata?.joinable);
 
@@ -25,7 +25,7 @@ export class ColyseusClient {
     }
   }
 
-  public async join<T>(room: RoomName, retryOnFail: boolean, options?: JoinOptions): Promise<Room<T>> {
+  public async join<T>(room: RoomName, retryOnFail: boolean, options: RoomJoinOptions): Promise<Room<T>> {
     const r = await this.client.join<T>(room, options);
 
     const res = await new Promise<boolean>((resolve) => {
@@ -43,11 +43,11 @@ export class ColyseusClient {
     return r;
   }
 
-  public async joinById<T>(roomId: string, options?: JoinOptions): Promise<Room<T>> {
+  public async joinById<T>(roomId: string, options: RoomJoinOptions): Promise<Room<T>> {
     return this.client.joinById<T>(roomId, options);
   }
 
-  public async create<T>(room: RoomName, options?: JoinOptions): Promise<Room<T>> {
+  public async create<T>(room: RoomName, options: RoomJoinOptions): Promise<Room<T>> {
     return this.client.create<T>(room, options);
   }
 

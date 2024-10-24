@@ -1,0 +1,72 @@
+import { Button } from "@/components/shared/Button";
+import { LoadingOverlay } from "@/components/shared/LoadingOverlay";
+import { useRoomState } from "@/hooks/useRoomState";
+import { useGameStore } from "@/stores/game";
+import { RoomMessage } from "@shared/src/room";
+import { Navigate, useParams } from "react-router-dom";
+
+export function RoomIndex() {
+  const { id } = useParams();
+
+  const room = useGameStore((state) => state.room);
+  const state = useRoomState();
+
+  // If no id, redirect to home
+  if (!id) {
+    return <Navigate to="/" />;
+  }
+
+  // If room doesn't exist or the id doesn't match, join the room with the id
+  if (!room || room.id !== id) {
+    return <Navigate to={`/room/join/${id}`} />;
+  }
+
+  // No state means room is still loading
+  if (!state) {
+    return <LoadingOverlay text={"Loading Room..."} />;
+  }
+
+  const start = () => {
+    if (!state.roomInfo.startable) return;
+
+    room.send(RoomMessage.START_GAME);
+  };
+
+  const host = state.players.find((p) => p.isHost);
+  const you = state.players.find((p) => p.sessionId === room.sessionId);
+  const needToStart = Math.max(0, state.roomInfo.playersToStart - state.players.length);
+
+  return (
+    <main className="w-full h-screen flex flex-col justify-center items-center p-4">
+      <h1 className="text-6xl font-bold text-blue-600 mb-8">{host?.name}'s Room</h1>
+
+      <div className="flex flex-col gap-4 max-w-md w-full">
+        <Button className="text-white bg-blue-600" onClick={start}>
+          {!state.roomInfo.startable ? `Need ${needToStart} more players to start` : "Start"}
+        </Button>
+
+        <div className="flex justify-between w-full items-center font-bold text-blue-600">
+          <p>Players</p>
+          <p>
+            {state.players.length} / {state.roomInfo.maxPlayers}
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-4 w-full">
+          {state.players.map((p) => (
+            <div
+              key={p.sessionId}
+              className="flex justify-between w-full items-center font-bold text-blue-600 bg-blue-100 p-3 rounded-md"
+            >
+              <p>{p.name}</p>
+              <div className="flex gap-2">
+                {p.isHost && <p>Host</p>}
+                {p.sessionId === room.sessionId && <p>You</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </main>
+  );
+}

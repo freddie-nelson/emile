@@ -1,6 +1,7 @@
 import { ColyseusClient } from "@/api/colyseus";
 import { env } from "@/helpers/env";
 import Engine from "@engine/src/engine";
+import { RoomJoinOptions } from "@shared/src/room";
 import { State } from "@state/src/state";
 import { Room } from "colyseus.js";
 import { create } from "zustand";
@@ -10,9 +11,9 @@ export interface GameStore {
   room: Room<State> | null;
   engine: Engine | null;
 
-  createRoom: () => Promise<void>;
-  joinOrCreateRoom: () => Promise<void>;
-  joinRoomById: (roomId: string) => Promise<void>;
+  createRoom: (options: RoomJoinOptions) => Promise<Room<State>>;
+  joinOrCreateRoom: (options: RoomJoinOptions) => Promise<Room<State>>;
+  joinRoomById: (roomId: string, options: RoomJoinOptions) => Promise<Room<State>>;
 
   setRoom: (room: Room<State>) => void;
   setEngine: (engine: Engine) => void;
@@ -23,17 +24,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
   room: null,
   engine: null,
 
-  createRoom: async () => {
-    const room = await get().colyseus.create<State>("room");
+  createRoom: async (options: RoomJoinOptions) => {
+    const room = await get().colyseus.create<State>("room", options);
     set({ room });
+
+    return room;
   },
-  joinOrCreateRoom: async () => {
-    const room = await get().colyseus.joinOrCreate<State>("room");
+  joinOrCreateRoom: async (options: RoomJoinOptions) => {
+    const room = await get().colyseus.joinOrCreate<State>("room", options);
     set({ room });
+
+    return room;
   },
-  joinRoomById: async (roomId: string) => {
-    const room = await get().colyseus.joinById<State>(roomId);
+  joinRoomById: async (roomId: string, options: RoomJoinOptions) => {
+    const room = await get().colyseus.joinById<State>(roomId, options);
     set({ room });
+
+    return room;
   },
 
   setRoom: (room: Room<State>) => set({ room }),
