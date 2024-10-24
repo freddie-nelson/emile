@@ -1,4 +1,4 @@
-import { ArraySchema, MapSchema, Schema, type } from "@colyseus/schema";
+import { MapSchema, Schema, type } from "@colyseus/schema";
 import { Entity } from "@engine/src/ecs/entity";
 import { EntityMap } from "@engine/src/ecs/registry";
 import RoomInfo from "./RoomInfo";

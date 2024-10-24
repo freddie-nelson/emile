@@ -60,6 +60,15 @@ export interface EngineOptions {
   autoStart?: boolean;
 
   /**
+   * Wether or not to automatically update the engine.
+   *
+   * If this is true, the engine will not automatically call the update loop. This is useful if you want to manually call the update loop.
+   *
+   * @default false
+   */
+  manualUpdate?: boolean;
+
+  /**
    * The rate at which to call the fixed update loop per second.
    *
    * This is in per second, so a value of 60 would execute the fixed update loop 60 times per second.
@@ -99,6 +108,7 @@ export interface EngineOptions {
 
 const defaultEngineOptions: Partial<EngineOptions> = {
   autoStart: false,
+  manualUpdate: false,
   fixedUpdateRate: 60,
   positionIterations: 6,
   velocityIterations: 4,
@@ -162,7 +172,9 @@ export default class Engine {
     this.started = true;
     this.lastUpdateTime = Date.now() - this.getFixedUpdateDelta();
 
-    this.update();
+    if (!this.options.manualUpdate) {
+      this.update();
+    }
   }
 
   /**
@@ -269,7 +281,16 @@ export default class Engine {
     this.timeScale = timeScale;
   }
 
-  private update() {
+  /**
+   * Performs one tick of the update loop.
+   *
+   * If the engine is not started, this will do nothing.
+   *
+   * If manual update is false (default), this will schedule the next update loop.
+   *
+   * @warning Only use this if you know what you are doing or have manual update enabled.
+   */
+  public update() {
     if (!this.started) {
       return;
     }
@@ -296,7 +317,9 @@ export default class Engine {
     // post
     this.updateCallbacks.get(UpdateCallbackType.POST_UPDATE)?.forEach((callback) => callback(dt));
 
-    requestAnimationFrame(() => this.update());
+    if (!this.options.manualUpdate) {
+      requestAnimationFrame(() => this.update());
+    }
   }
 
   private fixedUpdate(dt: number) {

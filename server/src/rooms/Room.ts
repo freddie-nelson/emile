@@ -4,15 +4,18 @@ import { Registry, RegistryType } from "@engine/src/ecs/registry";
 import { Transform } from "@engine/src/core/transform";
 import { State } from "@state/src/state";
 import { Client, Room } from "colyseus";
-import { RoomJoinOptions, RoomMetadata, roomOptionsSchema } from "@shared/src/room";
+import { ClientToRoomMessage, RoomJoinOptions, RoomMetadata, roomOptionsSchema } from "@shared/src/room";
 import Player from "@state/src/Player";
 import RoomIdGenerator from "@/helpers/RoomIdGenerator";
 import { zodErrorToUserFriendlyMessage } from "@shared/src/zod";
+import Engine, { EngineType } from "@engine/src/engine";
 
 export class DefaultRoom extends Room<State, RoomMetadata> {
   private static LOBBY_CHANNEL = "lobby";
+  private static SIMULATION_INTERVAL = 1000 / 60;
+  private static PATCH_RATE = 1000 / 30;
 
-  private registry?: Registry;
+  private engine?: Engine;
 
   maxClients = 10;
 
@@ -26,8 +29,17 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
     state.roomInfo.maxPlayers = this.maxClients;
 
     this.setState(state);
+    this.setPatchRate(DefaultRoom.PATCH_RATE);
 
-    this.registry = new Registry(RegistryType.SERVER, this.state.entities);
+    this.engine = new Engine({
+      type: EngineType.SERVER,
+      state: this.state,
+      manualUpdate: true,
+    });
+
+    this.setSimulationInterval(() => this.engine?.update(), DefaultRoom.SIMULATION_INTERVAL);
+
+    this.onMessage(ClientToRoomMessage.START_GAME, this.handleStartGame.bind(this));
   }
 
   async onAuth(client: Client, options: RoomJoinOptions) {
@@ -55,13 +67,6 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
     const p = new Player(client.sessionId, options.name, this.state.players.size === 0);
     this.state.players.set(client.sessionId, p);
     this.updateStartable();
-
-    if (!this.registry) {
-      throw new Error("Registry not initialized!");
-    }
-
-    const entity = this.registry!.create(new MapSchema<Component>());
-    this.registry!.add(entity, new Transform());
   }
 
   onLeave(client: Client, consented: boolean) {
@@ -77,6 +82,19 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
     await RoomIdGenerator.remove(this.presence, DefaultRoom.LOBBY_CHANNEL, this.roomId);
   }
 
+  private handleStartGame(client: Client) {
+    const p = this.getPlayer(client.sessionId);
+    if (!p || !p.isHost) {
+      return;
+    }
+
+    this.setStarted(true);
+  }
+
+  private getPlayer(sessionId: string) {
+    return this.state.players.get(sessionId);
+  }
+
   private updateStartable() {
     if (this.state.roomInfo.started) {
       return;
@@ -86,6 +104,11 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
   }
 
   private setStarted(started: boolean) {
+    if (this.state.roomInfo.started || !this.engine || !this.state.roomInfo.startable) {
+      return;
+    }
+
     this.state.roomInfo.started = started;
+    this.engine.start();
   }
 }

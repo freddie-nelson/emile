@@ -32,6 +32,9 @@ dependencies:
   express-basic-auth:
     specifier: ^1.2.1
     version: 1.2.1
+  matter-js:
+    specifier: ^0.20.0
+    version: 0.20.0
   zod:
     specifier: ^3.23.8
     version: 3.23.8
@@ -1945,6 +1948,10 @@ packages:
     dependencies:
       object-visit: 1.0.1
     dev: true
+
+  /matter-js@0.20.0:
+    resolution: {integrity: sha512-iC9fYR7zVT3HppNnsFsp9XOoQdQN2tUyfaKg4CHLH8bN+j6GT4Gw7IH2rP0tflAebrHFw730RR3DkVSZRX8hwA==}
+    dev: false
 
   /media-typer@0.3.0:
     resolution: {integrity: sha512-dq+qelQ9akHpcOl/gUVRTxVIOkAJ1wR3QAvb4RsVjS8oVoFjDGTc679wJYmUmknUF5HwMLOgb5O+a3KxfWapPQ==}

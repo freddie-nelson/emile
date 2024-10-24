@@ -6,7 +6,7 @@ export interface RoomMetadata {
   joinable: boolean;
 }
 
-export enum RoomMessage {
+export enum ClientToRoomMessage {
   START_GAME,
 }
 

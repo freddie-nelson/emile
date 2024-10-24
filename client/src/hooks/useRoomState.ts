@@ -10,6 +10,8 @@ export function useRoomState(wait: number = 1000) {
   useEffect(() => {
     if (!room) return;
 
+    setState(room.state.clone());
+
     const cb = debounce(
       (newState: State) => {
         setState(newState.clone());

@@ -2,7 +2,7 @@ import { Button } from "@/components/shared/Button";
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay";
 import { useRoomState } from "@/hooks/useRoomState";
 import { useGameStore } from "@/stores/game";
-import { RoomMessage } from "@shared/src/room";
+import { ClientToRoomMessage } from "@shared/src/room";
 import { Navigate, useParams } from "react-router-dom";
 
 export function RoomIndex() {
@@ -29,7 +29,7 @@ export function RoomIndex() {
   const start = () => {
     if (!state.roomInfo.startable) return;
 
-    room.send(RoomMessage.START_GAME);
+    room.send(ClientToRoomMessage.START_GAME);
   };
 
   const players = Array.from(state.players.values());
@@ -43,7 +43,11 @@ export function RoomIndex() {
 
       <div className="flex flex-col gap-4 max-w-md w-full">
         <Button className="text-white bg-blue-600" onClick={start}>
-          {!state.roomInfo.startable ? `Need ${needToStart} more players to start` : "Start"}
+          {!state.roomInfo.startable
+            ? `Need ${needToStart} more players to start`
+            : state.roomInfo.started
+            ? "Starting..."
+            : "Start Game"}
         </Button>
 
         <div className="flex justify-between w-full items-center font-bold text-blue-600">
