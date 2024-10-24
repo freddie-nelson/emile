@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export type RoomName = "room";
 
 export interface RoomMetadata {
@@ -5,11 +7,11 @@ export interface RoomMetadata {
 }
 
 export enum RoomMessage {
-  JOIN_SUCCESS,
-  JOIN_FAILURE,
   START_GAME,
 }
 
-export interface RoomJoinOptions {
-  name: string;
-}
+export const roomOptionsSchema = z.object({
+  name: z.string().min(1).max(32),
+});
+
+export type RoomJoinOptions = z.infer<typeof roomOptionsSchema>;

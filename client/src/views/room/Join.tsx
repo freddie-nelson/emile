@@ -27,7 +27,8 @@ export function RoomJoin() {
       .then(() => {
         navigate(`/room/${id}`);
       })
-      .catch(() => {
+      .catch((error) => {
+        alert(`Failed to connect to room. Error: ${(error as Error).message}`);
         setIsError(true);
       });
   }, []);

@@ -32,9 +32,10 @@ export function RoomIndex() {
     room.send(RoomMessage.START_GAME);
   };
 
-  const host = state.players.find((p) => p.isHost);
-  const you = state.players.find((p) => p.sessionId === room.sessionId);
-  const needToStart = Math.max(0, state.roomInfo.playersToStart - state.players.length);
+  const players = Array.from(state.players.values());
+  const host = players.find((p) => p.isHost);
+  const you = state.players.get(room.sessionId);
+  const needToStart = Math.max(0, state.roomInfo.playersToStart - state.players.size);
 
   return (
     <main className="w-full h-screen flex flex-col justify-center items-center p-4">
@@ -48,12 +49,12 @@ export function RoomIndex() {
         <div className="flex justify-between w-full items-center font-bold text-blue-600">
           <p>Players</p>
           <p>
-            {state.players.length} / {state.roomInfo.maxPlayers}
+            {state.players.size} / {state.roomInfo.maxPlayers}
           </p>
         </div>
 
         <div className="flex flex-col gap-4 w-full">
-          {state.players.map((p) => (
+          {players.map((p) => (
             <div
               key={p.sessionId}
               className="flex justify-between w-full items-center font-bold text-blue-600 bg-blue-100 p-3 rounded-md"

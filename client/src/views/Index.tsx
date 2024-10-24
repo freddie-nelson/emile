@@ -40,9 +40,7 @@ export function Index() {
       navigate(`/room/${r.id}`);
     } catch (error) {
       console.error(error);
-      alert(
-        "Failed to connect to room. Make sure the room exists, is not full and you have entered the correct room id."
-      );
+      alert(`Failed to connect to room. Error: ${(error as Error).message}`);
     }
 
     setIsConnecting(false);

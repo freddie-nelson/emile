@@ -1,4 +1,4 @@
-import { RoomJoinOptions, RoomMessage, RoomMetadata, RoomName } from "@shared/src/room";
+import { RoomJoinOptions, RoomMetadata, RoomName } from "@shared/src/room";
 import { Client, Room, RoomAvailable } from "colyseus.js";
 
 export class ColyseusClient {
@@ -26,29 +26,27 @@ export class ColyseusClient {
   }
 
   public async join<T>(room: RoomName, retryOnFail: boolean, options: RoomJoinOptions): Promise<Room<T>> {
-    const r = await this.client.join<T>(room, options);
-
-    const res = await new Promise<boolean>((resolve) => {
-      r.onMessage(RoomMessage.JOIN_SUCCESS, () => resolve(true));
-      r.onMessage(RoomMessage.JOIN_FAILURE, () => resolve(false));
-    });
-    if (!res) {
+    try {
+      return await this.client.join<T>(room, options);
+    } catch (error) {
       if (!retryOnFail) {
-        throw new Error("Failed to join room.");
+        throw error;
       }
 
       return this.join<T>(room, true, options);
     }
+  }
+
+  public async joinById<T>(roomId: string, options: RoomJoinOptions): Promise<Room<T>> {
+    const r = await this.client.joinById<T>(roomId, options);
 
     return r;
   }
 
-  public async joinById<T>(roomId: string, options: RoomJoinOptions): Promise<Room<T>> {
-    return this.client.joinById<T>(roomId, options);
-  }
-
   public async create<T>(room: RoomName, options: RoomJoinOptions): Promise<Room<T>> {
-    return this.client.create<T>(room, options);
+    const r = await this.client.create<T>(room, options);
+
+    return r;
   }
 
   public async getAvailableRooms<T>(room: RoomName): Promise<RoomAvailable<T>[]> {
