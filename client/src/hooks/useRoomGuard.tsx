@@ -45,7 +45,7 @@ export function useRoomGuard(
   }
 
   if (!state) {
-    return <LoadingOverlay text={"Loading Room..."} />;
+    return <LoadingOverlay text="Loading Room" />;
   }
 
   return null;

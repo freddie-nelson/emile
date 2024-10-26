@@ -1,7 +1,3 @@
-import { MapSchema } from "@colyseus/schema";
-import { Component } from "@engine/src/ecs/component";
-import { Registry, RegistryType } from "@engine/src/ecs/registry";
-import { Transform } from "@engine/src/core/transform";
 import { State } from "@state/src/state";
 import { Client, Room } from "colyseus";
 import { ClientToRoomMessage, RoomJoinOptions, RoomMetadata, roomOptionsSchema } from "@shared/src/room";
@@ -9,6 +5,7 @@ import Player from "@state/src/Player";
 import RoomIdGenerator from "@/helpers/RoomIdGenerator";
 import { zodErrorToUserFriendlyMessage } from "@shared/src/zod";
 import Engine, { EngineType } from "@engine/src/engine";
+import { sharedEngineOptions } from "@shared/src/engine";
 
 export class DefaultRoom extends Room<State, RoomMetadata> {
   private static LOBBY_CHANNEL = "lobby";
@@ -32,6 +29,7 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
     this.setPatchRate(DefaultRoom.PATCH_RATE);
 
     this.engine = new Engine({
+      ...sharedEngineOptions,
       type: EngineType.SERVER,
       state: this.state,
       manualUpdate: true,

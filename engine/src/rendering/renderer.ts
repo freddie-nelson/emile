@@ -2,7 +2,7 @@ import { System, SystemType, SystemUpdateData } from "../ecs/system";
 import { Transform } from "../core/transform";
 import { Registry } from "../ecs/registry";
 import { Entity, EntityQuery } from "../ecs/entity";
-import { Application, ColorSource, Sprite } from "pixi.js";
+import { Application, ApplicationOptions, ColorSource, Sprite } from "pixi.js";
 import { Logger } from "@shared/src/Logger";
 import { Renderable } from "./renderable";
 
@@ -17,9 +17,11 @@ export interface RendererOptions {
   /**
    * The parent element to attach the renderer to.
    *
-   * @default document.body
+   * If not set, you must manually add the renderer's canvas to the DOM. Using the `attach` method.
+   *
+   * @default null
    */
-  parentElement?: HTMLElement;
+  parentElement?: HTMLElement | null;
 
   /**
    * The width of the renderer.
@@ -65,7 +67,7 @@ export interface RendererOptions {
 
 const defaultRendererOptions: Partial<RendererOptions> = {
   autoInit: true,
-  parentElement: document.body,
+  parentElement: null,
   width: -1,
   height: -1,
   autoSize: true,
@@ -75,9 +77,15 @@ const defaultRendererOptions: Partial<RendererOptions> = {
 
 export interface SpriteCreator {
   readonly query?: EntityQuery;
-  readonly create?: (registry: Registry, entity: Entity) => Sprite;
-  readonly update?: (registry: Registry, entity: Entity, sprite: Sprite, dt: number) => void;
-  readonly delete?: (registry: Registry, entity: Entity, sprite: Sprite) => void;
+  readonly create?: (registry: Registry, app: Application, entity: Entity) => Sprite;
+  readonly update?: (
+    registry: Registry,
+    app: Application,
+    entity: Entity,
+    sprite: Sprite,
+    dt: number
+  ) => void;
+  readonly delete?: (registry: Registry, app: Application, entity: Entity, sprite: Sprite) => void;
 }
 
 /**
@@ -110,6 +118,10 @@ export class Renderer extends System {
   }
 
   public update = ({ registry, entities, dt }: SystemUpdateData) => {
+    if (!this.isInitialized() || !this.app) {
+      return;
+    }
+
     // delete sprites for entities that no longer exist
     for (const entity of this.sprites.keys()) {
       if (entities.has(entity)) {
@@ -118,7 +130,7 @@ export class Renderer extends System {
 
       for (const creator of this.sprites.get(entity)!.keys()) {
         const sprite = this.sprites.get(entity)!.get(creator)!;
-        creator.delete?.(registry, entity, sprite);
+        creator.delete?.(registry, this.app, entity, sprite);
       }
 
       this.sprites.delete(entity);
@@ -134,7 +146,7 @@ export class Renderer extends System {
           }
 
           const sprite = entitySprites.get(creator)!;
-          creator.delete?.(registry, entity, sprite);
+          creator.delete?.(registry, this.app, entity, sprite);
           entitySprites.delete(creator);
           continue;
         }
@@ -145,19 +157,25 @@ export class Renderer extends System {
 
         const entitySprites = this.sprites.get(entity)!;
         if (!entitySprites.has(creator) && creator.create) {
-          const sprite = creator.create(registry, entity);
+          const sprite = creator.create(registry, this.app, entity);
           entitySprites.set(creator, sprite);
         }
 
         const sprite = entitySprites.get(creator)!;
-        creator.update?.(registry, entity, sprite, dt);
+        creator.update?.(registry, this.app, entity, sprite, dt);
       }
     }
+
+    this.app.render();
   };
 
   public dispose = () => {
-    this.resizeObserver?.disconnect();
-    this.app?.destroy();
+    this.waitForInitialized().then(() => {
+      this.resizeObserver?.disconnect();
+      this.app?.destroy({
+        removeView: true,
+      });
+    });
   };
 
   public async init() {
@@ -168,21 +186,48 @@ export class Renderer extends System {
     this.initialized = false;
 
     this.app = new Application();
-    await this.app.init({
-      width: this.options.width === -1 ? this.options.parentElement.clientWidth : this.options.width,
-      height: this.options.height === -1 ? this.options.parentElement.clientHeight : this.options.height,
-      resizeTo: this.options.autoSize ? this.options.parentElement : undefined,
-      backgroundColor: this.options.backgroundColor,
-    });
 
-    this.options.parentElement.appendChild(this.app.canvas);
+    const options: Partial<ApplicationOptions> = {
+      width: this.options.width === -1 ? undefined : this.options.width,
+      height: this.options.height === -1 ? undefined : this.options.height,
+      backgroundColor: this.options.backgroundColor,
+    };
+    await this.app.init(options);
+
+    this.initialized = true;
+
+    if (this.options.parentElement) {
+      this.attach(this.options.parentElement);
+    }
+  }
+
+  public attach(parent: HTMLElement) {
+    if (!this.isInitialized() || !this.app) {
+      Logger.errorAndThrow("CORE", "Cannot attach renderer before it is initialized.");
+      return;
+    }
+
+    this.options.parentElement = parent;
+
+    if (this.options.autoSize) {
+      this.app.resizeTo = parent;
+    }
+
+    this.app.renderer.resize(
+      this.options.width === -1 ? parent.clientWidth : this.options.width,
+      this.options.height === -1 ? parent.clientHeight : this.options.height
+    );
+
+    parent.appendChild(this.app.canvas);
+
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
 
     this.resizeObserver = new ResizeObserver((entries) => {
       this.app?.resize();
     });
-    this.resizeObserver.observe(this.options.parentElement);
-
-    this.initialized = true;
+    this.resizeObserver.observe(parent);
   }
 
   /**

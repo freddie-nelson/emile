@@ -37,5 +37,5 @@ export function RoomJoin() {
     return <Navigate to="/" />;
   }
 
-  return <LoadingOverlay text="Joining Room..." />;
+  return <LoadingOverlay text="Joining Room" />;
 }

@@ -50,7 +50,7 @@ export function Index() {
     <main className="w-full h-screen flex flex-col justify-center items-center p-4">
       <h1 className="text-6xl font-bold text-blue-600 mb-8">Emile Demo</h1>
 
-      {isConnecting && <LoadingOverlay />}
+      {isConnecting && <LoadingOverlay text="Connecting" />}
 
       <div className="flex flex-col gap-4 max-w-md w-full">
         <div className="flex flex-col">

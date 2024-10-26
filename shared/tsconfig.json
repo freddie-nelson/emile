@@ -12,7 +12,12 @@
     "forceConsistentCasingInFileNames": true,
     "useDefineForClassFields": false,
     "resolveJsonModule": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+
+    "baseUrl": ".",
+    "paths": {
+      "@engine/*": ["../engine/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "../engine"]
 }

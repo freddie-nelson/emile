@@ -9,6 +9,7 @@ export enum EngineType {
   SERVER,
   CLIENT,
 }
+
 export function engineTypeToRegistryType(type: EngineType): RegistryType {
   switch (type) {
     case EngineType.CLIENT:
