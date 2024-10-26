@@ -169,6 +169,10 @@ export default class Engine {
    * Starts the engine.
    */
   public start() {
+    if (this.started) {
+      return;
+    }
+
     this.started = true;
     this.lastUpdateTime = Date.now() - this.getFixedUpdateDelta();
 
@@ -181,6 +185,10 @@ export default class Engine {
    * Stops the engine.
    */
   public stop() {
+    if (!this.started) {
+      return;
+    }
+
     this.started = false;
   }
 

@@ -1,5 +1,5 @@
 import { Button } from "@/components/shared/Button";
-import { LoadingOverlay } from "@/components/shared/LoadingOverlay";
+import { useRoomGuard } from "@/hooks/useRoomGuard";
 import { useRoomState } from "@/hooks/useRoomState";
 import { useGameStore } from "@/stores/game";
 import { ClientToRoomMessage } from "@shared/src/room";
@@ -8,22 +8,16 @@ import { Navigate, useParams } from "react-router-dom";
 export function RoomIndex() {
   const { id } = useParams();
 
-  const room = useGameStore((state) => state.room);
-  const state = useRoomState();
+  const room = useGameStore((state) => state.room)!;
+  const state = useRoomState()!;
 
-  // If no id, redirect to home
-  if (!id) {
-    return <Navigate to="/" />;
+  const guard = useRoomGuard(id, room, state);
+  if (guard) {
+    return guard;
   }
 
-  // If room doesn't exist or the id doesn't match, join the room with the id
-  if (!room || room.id !== id) {
-    return <Navigate to={`/room/join/${id}`} />;
-  }
-
-  // No state means room is still loading
-  if (!state) {
-    return <LoadingOverlay text={"Loading Room..."} />;
+  if (state.roomInfo.started) {
+    return <Navigate to={`/game/${id}`} />;
   }
 
   const start = () => {
@@ -42,14 +36,15 @@ export function RoomIndex() {
       <h1 className="text-6xl font-bold text-blue-600 mb-8">{host?.name}'s Room</h1>
 
       <div className="flex flex-col gap-4 max-w-md w-full">
-        <Button className="text-white bg-blue-600" onClick={start}>
-          {!state.roomInfo.startable
-            ? `Need ${needToStart} more players to start`
-            : state.roomInfo.started
-            ? "Starting..."
-            : "Start Game"}
-        </Button>
-
+        {you?.isHost && (
+          <Button className="text-white bg-blue-600" onClick={start}>
+            {!state.roomInfo.startable
+              ? `Need ${needToStart} more players to start`
+              : state.roomInfo.started
+              ? "Starting..."
+              : "Start Game"}
+          </Button>
+        )}
         <div className="flex justify-between w-full items-center font-bold text-blue-600">
           <p>Players</p>
           <p>

@@ -103,12 +103,24 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
     this.state.roomInfo.startable = this.state.players.size >= this.state.roomInfo.playersToStart;
   }
 
+  /**
+   * Will set `roomInfo.started`, start or stop the engine and update `metadata.joinable`.
+   *
+   * Will not set the value if the engine is not set or the room is not startable and trying to start.
+   */
   private setStarted(started: boolean) {
-    if (this.state.roomInfo.started || !this.engine || !this.state.roomInfo.startable) {
+    if (!this.engine || (!this.state.roomInfo.startable && started)) {
       return;
     }
 
     this.state.roomInfo.started = started;
-    this.engine.start();
+
+    if (started) {
+      this.engine.start();
+      this.setMetadata({ joinable: false });
+    } else {
+      this.engine.stop();
+      this.setMetadata({ joinable: true });
+    }
   }
 }

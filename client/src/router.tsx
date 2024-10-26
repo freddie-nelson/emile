@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { Index } from "./views/Index";
 import { RoomIndex } from "./views/room/Index";
 import { RoomJoin } from "./views/room/Join";
+import { GameIndex } from "./views/game/Index";
 
 export const router = createBrowserRouter([
   {
@@ -15,5 +16,9 @@ export const router = createBrowserRouter([
   {
     path: "/room/join/:id",
     element: <RoomJoin />,
+  },
+  {
+    path: "/game/:id",
+    element: <GameIndex />,
   },
 ]);
