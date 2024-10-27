@@ -14,7 +14,7 @@ export const router = createBrowserRouter([
     element: <RoomIndex />,
   },
   {
-    path: "/room/join/:id",
+    path: "/room/:id/join",
     element: <RoomJoin />,
   },
   {

@@ -113,7 +113,7 @@ const defaultEngineOptions: Partial<EngineOptions> = {
   fixedUpdateRate: 60,
   positionIterations: 6,
   velocityIterations: 4,
-  gravity: new Vec2(0, 9.81),
+  gravity: new Vec2(0, 0),
   colliderSlop: 0.05,
 };
 
@@ -175,7 +175,7 @@ export default class Engine {
     }
 
     this.started = true;
-    this.lastUpdateTime = Date.now() - this.getFixedUpdateDelta();
+    this.lastUpdateTime = Date.now() - 1000 / this.options.fixedUpdateRate;
 
     if (!this.options.manualUpdate) {
       this.update();
@@ -250,7 +250,7 @@ export default class Engine {
    * @returns The delta time of fixed updates.
    */
   public getFixedUpdateDelta() {
-    return 1000 / this.options.fixedUpdateRate;
+    return 1 / this.options.fixedUpdateRate;
   }
 
   /**
@@ -305,7 +305,7 @@ export default class Engine {
     }
 
     const now = Date.now();
-    const dt = (now - this.lastUpdateTime) * this.timeScale;
+    const dt = ((now - this.lastUpdateTime) / 1000) * this.timeScale;
     this.lastUpdateDelta = dt;
     this.lastUpdateTime = now;
     this.updateTimeAccumulator += dt;

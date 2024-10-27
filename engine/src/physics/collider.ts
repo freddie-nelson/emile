@@ -2,7 +2,6 @@ import { Vec2 } from "../math/vec";
 import { Component } from "../ecs/component";
 import { type } from "@colyseus/schema";
 import Matter from "matter-js";
-import { RegistryType } from "../ecs/registry";
 import { TypedBody } from "../matter";
 import { Entity } from "../ecs/entity";
 
@@ -31,6 +30,21 @@ export type CollisionCallback = (pair: Matter.Pair, a: Entity, b: Entity) => voi
  * See [here](https://brm.io/matter-js/docs/classes/Body.html#property_collisionFilter) for information on how collision filters are used.
  */
 export abstract class Collider extends Component {
+  public static onComponentAdded(entity: Entity, component: Component) {
+    const collider = component as Collider;
+
+    collider.onChange(() => {
+      if (!collider.body) {
+        return;
+      }
+
+      collider.body.isSensor = collider.isSensor;
+      collider.body.collisionFilter.group = collider.group;
+      collider.body.collisionFilter.category = collider.category;
+      collider.body.collisionFilter.mask = collider.mask;
+    });
+  }
+
   @type("int8") public type: ColliderType;
   @type("boolean") public isSensor: boolean = false;
   @type("int32") public group: number = 1;
@@ -42,108 +56,109 @@ export abstract class Collider extends Component {
    *
    * @warning DO NOT TOUCH THIS UNLESS YOU KNOW WHAT YOU ARE DOING.
    */
-  public body: TypedBody | null = null;
+  public body?: TypedBody;
 
-  private collisionCallbacks: Map<ColliderEvent, CollisionCallback[]> = new Map();
+  private collisionCallbacks?: Map<ColliderEvent, CollisionCallback[]>;
 
-  constructor(registryType: RegistryType, type: ColliderType) {
-    super();
+  constructor(componentId: number, type: ColliderType) {
+    super(componentId);
 
     this.type = type;
-
-    if (registryType === RegistryType.CLIENT) {
-      this.onChange(() => {
-        if (!this.body) {
-          return;
-        }
-
-        this.body.isSensor = this.isSensor;
-        this.body.collisionFilter.group = this.group;
-        this.body.collisionFilter.category = this.category;
-        this.body.collisionFilter.mask = this.mask;
-      });
-    }
   }
 
   /**
    * Sets the collider as a sensor.
    *
+   * @param collider The collider.
    * @param isSensor Wether or not the collider is a sensor.
    */
-  public setSensor(isSensor: boolean) {
-    this.isSensor = isSensor;
+  public static setSensor(collider: Collider, isSensor: boolean) {
+    collider.isSensor = isSensor;
 
-    if (this.body) {
-      this.body.isSensor = isSensor;
+    if (collider.body) {
+      collider.body.isSensor = isSensor;
     }
   }
 
   /**
    * Sets the collision category of the collider.
    *
+   * @param collider The collider.
    * @param group The collision group to set.
    */
-  public setCollisionGroup(group: number) {
-    this.group = group;
+  public static setCollisionGroup(collider: Collider, group: number) {
+    collider.group = group;
 
-    if (this.body) {
-      this.body.collisionFilter.group = group;
+    if (collider.body) {
+      collider.body.collisionFilter.group = group;
     }
   }
 
   /**
    * Sets the collision category of the collider.
    *
+   * @param collider The collider.
    * @param category The collision category to set.
    */
-  public setCollisionCategory(category: number) {
-    this.category = category;
+  public static setCollisionCategory(collider: Collider, category: number) {
+    collider.category = category;
 
-    if (this.body) {
-      this.body.collisionFilter.category = category;
+    if (collider.body) {
+      collider.body.collisionFilter.category = category;
     }
   }
 
   /**
    * Sets the collision mask of the collider.
    *
+   * @param collider The collider.
    * @param mask The collision mask to set.
    */
-  public setCollisionMask(mask: number) {
-    this.mask = mask;
+  public static setCollisionMask(collider: Collider, mask: number) {
+    collider.mask = mask;
 
-    if (this.body) {
-      this.body.collisionFilter.mask = mask;
+    if (collider.body) {
+      collider.body.collisionFilter.mask = mask;
     }
   }
 
   /**
    * Adds a collision event listener.
    *
+   * @param collider The collider.
    * @param event The event to listen for.
    * @param callback The callback to call when the event is triggered.
    */
-  public on(event: ColliderEvent, callback: CollisionCallback) {
-    if (!this.collisionCallbacks.has(event)) {
-      this.collisionCallbacks.set(event, []);
+  public static on(collider: Collider, event: ColliderEvent, callback: CollisionCallback) {
+    if (!collider.collisionCallbacks) {
+      collider.collisionCallbacks = new Map();
     }
 
-    this.collisionCallbacks.get(event)?.push(callback);
+    if (!collider.collisionCallbacks.has(event)) {
+      collider.collisionCallbacks.set(event, []);
+    }
+
+    collider.collisionCallbacks.get(event)?.push(callback);
   }
 
   /**
    * Removes a collision event listener.
    *
+   * @param collider The collider.
    * @param event The event to remove the callback from.
    * @param callback The callback to remove.
    */
-  public off(event: ColliderEvent, callback: CollisionCallback) {
-    if (!this.collisionCallbacks.has(event)) {
+  public static off(collider: Collider, event: ColliderEvent, callback: CollisionCallback) {
+    if (!collider.collisionCallbacks) {
+      collider.collisionCallbacks = new Map();
+    }
+
+    if (!collider.collisionCallbacks.has(event)) {
       return;
     }
 
-    const callbacks = this.collisionCallbacks.get(event)!;
-    this.collisionCallbacks.set(
+    const callbacks = collider.collisionCallbacks.get(event)!;
+    collider.collisionCallbacks.set(
       event,
       callbacks.filter((cb) => cb !== callback)
     );
@@ -156,17 +171,22 @@ export abstract class Collider extends Component {
    *
    * @note Entity a should be the entity that has this collider.
    *
+   * @param collider The collider.
    * @param event The event to fire.
    * @param pair The matter pair
    * @param a The first entity
    * @param b The second entity
    */
-  public fire(event: ColliderEvent, pair: Matter.Pair, a: Entity, b: Entity) {
-    if (!this.collisionCallbacks.has(event)) {
+  public static fire(collider: Collider, event: ColliderEvent, pair: Matter.Pair, a: Entity, b: Entity) {
+    if (!collider.collisionCallbacks) {
+      collider.collisionCallbacks = new Map();
+    }
+
+    if (!collider.collisionCallbacks.has(event)) {
       return;
     }
 
-    this.collisionCallbacks.get(event)?.forEach((callback) => callback(pair, a, b));
+    collider.collisionCallbacks.get(event)?.forEach((callback) => callback(pair, a, b));
   }
 
   /**
@@ -174,10 +194,11 @@ export abstract class Collider extends Component {
    *
    * @note This should only be called by the physics world.
    *
+   * @param collider The collider.
    * @param body The matter body to set.
    */
-  public setBody(body: Matter.Body) {
-    this.body = body;
+  public static setBody(collider: Collider, body: Matter.Body | undefined) {
+    collider.body = body;
   }
 
   /**
@@ -185,150 +206,173 @@ export abstract class Collider extends Component {
    *
    * @note Only use this if you know what you are doing.
    *
+   * @param collider The collider.
+   *
    * @returns The matter body.
    */
-  public getBody() {
-    return this.body;
+  public static getBody(collider: Collider) {
+    return collider.body;
   }
 
   /**
    * Updates the collider component from the matter body.
+   *
+   * @param collider The collider.
    */
-  public update() {}
+  public static update(collider: Collider) {}
 }
 
 export class CircleCollider extends Collider {
+  public static readonly COMPONENT_ID = 192;
+
+  public static onComponentAdded(entity: Entity, component: Component) {
+    Collider.onComponentAdded(entity, component);
+
+    const collider = component as CircleCollider;
+
+    collider.onChange(() => {
+      if (!collider.body || !collider.body.plugin) {
+        return;
+      }
+
+      if (collider.body.plugin.circleRadius !== collider.radius) {
+        collider.body = undefined;
+      }
+    });
+  }
+
   @type("float32") public radius: number;
 
   /**
    * Creates a new circle collider.
    *
-   * @param registryType The registry type.
    * @param radius The radius of the circle collider.
    */
-  constructor(registryType: number, radius: number) {
-    super(registryType, ColliderType.CIRCLE);
+  constructor(radius: number) {
+    super(CircleCollider.COMPONENT_ID, ColliderType.CIRCLE);
 
     this.radius = radius;
-
-    if (registryType === RegistryType.CLIENT) {
-      this.onChange(() => {
-        if (!this.body || !this.body.plugin) {
-          return;
-        }
-
-        if (this.body.plugin.circleRadius !== this.radius) {
-          this.setRadius(this.radius);
-        }
-      });
-    }
   }
 
   /**
    * Sets the radius of the circle collider.
    *
+   * @param collider The collider.
    * @param radius The radius to set.
    */
-  public setRadius(radius: number) {
-    this.radius = radius;
-    this.body = null;
+  public static setRadius(collider: CircleCollider, radius: number) {
+    collider.radius = radius;
+    collider.body = undefined;
   }
 }
 
 export class RectangleCollider extends Collider {
+  public static readonly COMPONENT_ID = 193;
+
+  public static onComponentAdded(entity: Entity, component: Component) {
+    Collider.onComponentAdded(entity, component);
+
+    const collider = component as RectangleCollider;
+
+    collider.onChange(() => {
+      if (!collider.body || !collider.body.plugin) {
+        return;
+      }
+
+      if (
+        collider.body.plugin.rectangleWidth !== collider.width ||
+        collider.body.plugin.rectangleHeight !== collider.height
+      ) {
+        collider.body = undefined;
+      }
+    });
+  }
+
   @type("float32") public width: number;
   @type("float32") public height: number;
 
   /**
    * Creates a new rectangle collider.
    *
-   * @param registryType The registry type.
    * @param width The width of the rectangle.
    * @param height The height of the rectangle.
    */
-  constructor(registryType: RegistryType, width: number, height: number) {
-    super(registryType, ColliderType.RECTANGLE);
+  constructor(width: number, height: number) {
+    super(RectangleCollider.COMPONENT_ID, ColliderType.RECTANGLE);
 
     this.width = width;
     this.height = height;
-
-    if (registryType === RegistryType.CLIENT) {
-      this.onChange(() => {
-        if (!this.body || !this.body.plugin) {
-          return;
-        }
-
-        if (
-          this.body.plugin.rectangleWidth !== this.width ||
-          this.body.plugin.rectangleHeight !== this.height
-        ) {
-          this.body = null;
-        }
-      });
-    }
   }
 
   /**
    * Sets the width of the rectangle collider.
    *
+   * @param collider The collider.
    * @param width The width to set.
    */
-  public setWidth(width: number) {
-    this.width = width;
-    this.body = null;
+  public static setWidth(collider: RectangleCollider, width: number) {
+    collider.width = width;
+    collider.body = undefined;
   }
 
   /**
    * Sets the height of the rectangle collider.
    *
+   * @param collider The collider.
    * @param height The height to set.
    */
-  public setHeight(height: number) {
-    this.height = height;
-    this.body = null;
+  public static setHeight(collider: RectangleCollider, height: number) {
+    collider.height = height;
+    collider.body = undefined;
   }
 }
 
 export class PolygonCollider extends Collider {
+  public static readonly COMPONENT_ID = 194;
+
+  public static onComponentAdded(entity: Entity, component: Component) {
+    Collider.onComponentAdded(entity, component);
+
+    const collider = component as PolygonCollider;
+
+    collider.onChange(() => {
+      if (!collider.body || !collider.body.plugin) {
+        return;
+      }
+
+      if (collider.body.plugin.polygonVertices?.length !== collider.vertices.length) {
+        collider.body = undefined;
+      } else if (
+        collider.body.plugin.polygonVertices?.some(
+          (v, i) => v.x !== collider.vertices[i].x || v.y !== collider.vertices[i].y
+        )
+      ) {
+        collider.body = undefined;
+      }
+    });
+  }
+
   @type([Vec2]) public vertices: Vec2[];
 
   /**
    * Creates a new polygon collider.
    *
-   * @param registryType The registry type.
    * @param vertices The vertices of the polygon collider.
    */
-  constructor(registryType: RegistryType, vertices: Vec2[]) {
-    super(registryType, ColliderType.POLYGON);
+  constructor(vertices: Vec2[]) {
+    super(PolygonCollider.COMPONENT_ID, ColliderType.POLYGON);
 
     this.vertices = vertices;
-
-    if (registryType === RegistryType.CLIENT) {
-      this.onChange(() => {
-        if (!this.body || !this.body.plugin) {
-          return;
-        }
-
-        if (this.body.plugin.polygonVertices?.length !== this.vertices.length) {
-          this.body = null;
-        } else if (
-          this.body.plugin.polygonVertices?.some(
-            (v, i) => v.x !== this.vertices[i].x || v.y !== this.vertices[i].y
-          )
-        ) {
-          this.body = null;
-        }
-      });
-    }
   }
 
   /**
    * Sets the vertices of the polygon collider.
    *
+   * @param collider The collider.
    * @param vertices The vertices to set.
    */
-  public setVertices(vertices: Vec2[]) {
-    this.vertices = vertices;
-    this.body = null;
+  public static setVertices(collider: PolygonCollider, vertices: Vec2[]) {
+    collider.vertices = vertices;
+    collider.body = undefined;
   }
 }

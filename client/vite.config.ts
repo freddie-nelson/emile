@@ -13,4 +13,13 @@ export default defineConfig({
       "@engine": path.resolve(__dirname, "../engine/"),
     },
   },
+
+  build: {
+    target: "es2020",
+    minify: "esbuild",
+  },
+
+  esbuild: {
+    minifyIdentifiers: false,
+  },
 });

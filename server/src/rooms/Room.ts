@@ -6,6 +6,12 @@ import RoomIdGenerator from "@/helpers/RoomIdGenerator";
 import { zodErrorToUserFriendlyMessage } from "@shared/src/zod";
 import Engine, { EngineType } from "@engine/src/engine";
 import { sharedEngineOptions } from "@shared/src/engine";
+import { Logger } from "@shared/src/Logger";
+import { Transform } from "@engine/src/core/transform";
+import { Rigidbody } from "@engine/src/physics/rigidbody";
+import { CircleCollider } from "@engine/src/physics/collider";
+import { Vec2 } from "@engine/src/math/vec";
+import { Renderable } from "@engine/src/rendering/renderable";
 
 export class DefaultRoom extends Room<State, RoomMetadata> {
   private static LOBBY_CHANNEL = "lobby";
@@ -58,6 +64,10 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
   onJoin(client: Client, options: RoomJoinOptions) {
     console.log("onJoin", client.sessionId, options);
 
+    if (!this.engine) {
+      return Logger.errorAndThrow("DEFAULTROOM", "Engine not set in onJoin");
+    }
+
     if (this.hasReachedMaxClients()) {
       this.setMetadata({ joinable: false });
     }
@@ -81,12 +91,28 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
   }
 
   private handleStartGame(client: Client) {
+    if (!this.engine) {
+      return Logger.errorAndThrow("DEFAULTROOM", "Engine not set in handleStartGame");
+    }
+
+    if (this.state.roomInfo.started) {
+      return;
+    }
+
     const p = this.getPlayer(client.sessionId);
     if (!p || !p.isHost) {
       return;
     }
 
     this.setStarted(true);
+
+    for (const p of this.state.players.values()) {
+      const playerEntity = this.engine.registry.create();
+      this.engine.registry.add(playerEntity, new Transform(new Vec2((Math.random() - 0.5) * 2)));
+      this.engine.registry.add(playerEntity, new Rigidbody());
+      this.engine.registry.add(playerEntity, new CircleCollider(0.5));
+      this.engine.registry.add(playerEntity, new Renderable());
+    }
   }
 
   private getPlayer(sessionId: string) {

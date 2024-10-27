@@ -1,9 +1,17 @@
 import { Logger } from "@shared/src/Logger";
-import { Component, ComponentConstructor, Constructor } from "./component";
+import {
+  Component,
+  ComponentConstructor,
+  GenericComponentConstructor,
+  getComponentIdFromConstructor,
+} from "./component";
 import { System, SystemType, SystemUpdateData } from "./system";
 import { MapSchema } from "@colyseus/schema";
 import { Entity, EntityQuery } from "./entity";
 import Engine from "../engine";
+import { CircleCollider, PolygonCollider, RectangleCollider } from "../physics/collider";
+import { Rigidbody } from "../physics/rigidbody";
+import { Constraint } from "../physics/constraint";
 
 export type EntityMap = MapSchema<Entity>;
 
@@ -30,7 +38,7 @@ export class Registry {
     }
 
     const key = Array.from(query.values())
-      .map((component) => component.name)
+      .map((component) => getComponentIdFromConstructor(component))
       .sort()
       .join(",");
 
@@ -47,6 +55,18 @@ export class Registry {
   private systems: System[] = [];
 
   /**
+   * The component add listeners.
+   *
+   * These are callbacks that are called when a component is added to an entity.
+   *
+   * The key is the component's constructor name.
+   */
+  private componentAddListeners: Map<
+    string,
+    Set<(entity: Entity, component: Component, componentName: string) => void>
+  > = new Map();
+
+  /**
    * All the distinct entity queries for the systems in the registry.
    */
   private entityQueries: EntityQuery[] = [];
@@ -59,7 +79,7 @@ export class Registry {
   /**
    * The map of queries to the entities that match that query.
    */
-  private queryEntities: Map<string, Set<Entity>> = new Map();
+  private queryEntities: Map<string, Set<string>> = new Map();
 
   private onEntityCreated = (entity: Entity) => {
     this.updateEntityMapsForEntity(entity);
@@ -98,11 +118,18 @@ export class Registry {
       this.entities.onAdd((entity, key) => {
         this.onEntityCreated(entity);
         entity.listen("components", () => this.onEntityModified(entity));
+        entity.components.onAdd((component, key) => this.fireComponentAddListeners(entity, component, key));
       });
 
       this.entities.onRemove((entity, key) => {
         this.onEntityDestroyed(entity);
       });
+
+      this.addComponentListener(CircleCollider, CircleCollider.onComponentAdded);
+      this.addComponentListener(RectangleCollider, RectangleCollider.onComponentAdded);
+      this.addComponentListener(PolygonCollider, PolygonCollider.onComponentAdded);
+      this.addComponentListener(Rigidbody, Rigidbody.onComponentAdded);
+      this.addComponentListener(Constraint, Constraint.onComponentAdded);
     }
   }
 
@@ -157,11 +184,9 @@ export class Registry {
    *
    * @returns The new entity's id.
    */
-  public create(components: MapSchema<Component>): string {
+  public create(): string {
     const entity = new Entity();
     this.entities.set(entity.id, entity);
-    // @ts-ignore
-    entity.components = components;
 
     if (this.type === RegistryType.SERVER) {
       this.onEntityCreated(entity);
@@ -212,7 +237,7 @@ export class Registry {
         Logger.errorAndThrow("Registry", `Entity with id '${id}' not found in registry.`);
       }
 
-      return this.entities.get(id)!.hasComponent(component);
+      return Entity.hasComponent(this.entities.get(id)!, component);
     }
 
     return this.entities.has(id);
@@ -231,7 +256,7 @@ export class Registry {
       Logger.errorAndThrow("Registry", `Entity with id '${id}' not found in registry.`);
     }
 
-    this.entities.get(id)!.addComponent(component);
+    Entity.addComponent(this.entities.get(id)!, component);
 
     if (this.type === RegistryType.SERVER) {
       this.onEntityModified(this.entities.get(id)!);
@@ -251,7 +276,7 @@ export class Registry {
       Logger.errorAndThrow("Registry", `Entity with id '${id}' not found in registry.`);
     }
 
-    this.entities.get(id)!.removeComponent(component);
+    Entity.removeComponent(this.entities.get(id)!, component);
 
     if (this.type === RegistryType.SERVER) {
       this.onEntityModified(this.entities.get(id)!);
@@ -268,7 +293,7 @@ export class Registry {
    *
    * @returns The component instance.
    */
-  public get<T extends Component>(id: string, component: Constructor<T>): T;
+  public get<T extends Component>(id: string, component: GenericComponentConstructor<T>): T;
 
   /**
    * Gets an entity from the registry.
@@ -290,7 +315,7 @@ export class Registry {
       return this.entities.get(id)!;
     }
 
-    return this.entities.get(id)!.getComponent(component);
+    return Entity.getComponent(this.entities.get(id)!, component);
   }
 
   /**
@@ -371,6 +396,52 @@ export class Registry {
     );
   }
 
+  /**
+   * Adds a component add listener.
+   *
+   * @param component The component to listen for.
+   * @param cb The callback to call when the component is added to an entity.
+   */
+  public addComponentListener(
+    component: ComponentConstructor,
+    cb: (entity: Entity, component: Component, componentName: string) => void
+  ) {
+    const key = getComponentIdFromConstructor(component);
+    if (!this.componentAddListeners.has(key)) {
+      this.componentAddListeners.set(key, new Set());
+    }
+
+    this.componentAddListeners.get(key)!.add(cb);
+  }
+
+  /**
+   * Removes a component add listener.
+   *
+   * @param component The component the callback is listening for.
+   * @param cb The callback to remove.
+   */
+  public removeComponentListener(
+    component: ComponentConstructor,
+    cb: (entity: Entity, component: Component, componentName: string) => void
+  ) {
+    const key = getComponentIdFromConstructor(component);
+    if (!this.componentAddListeners.has(key)) {
+      return;
+    }
+
+    this.componentAddListeners.get(key)!.delete(cb);
+  }
+
+  private fireComponentAddListeners(entity: Entity, component: Component, componentName: string) {
+    if (!this.componentAddListeners.has(componentName)) {
+      return;
+    }
+
+    for (const cb of this.componentAddListeners.get(componentName)!) {
+      cb(entity, component, componentName);
+    }
+  }
+
   private getAllEntityQueries() {
     const queries: EntityQuery[] = [];
     const keys = new Set<string>();
@@ -399,8 +470,8 @@ export class Registry {
     // add entities to the query entities
     for (const entity of this.entities.values()) {
       for (const query of this.entityQueries) {
-        if (entity.matchesQuery(query)) {
-          this.queryEntities.get(Registry.getEntityQueryKey(query))!.add(entity);
+        if (Entity.matchesQuery(entity, query)) {
+          this.queryEntities.get(Registry.getEntityQueryKey(query))!.add(entity.id);
         }
       }
     }
@@ -408,17 +479,17 @@ export class Registry {
 
   private updateEntityMapsForEntity(entity: Entity) {
     for (const query of this.entityQueries) {
-      if (entity.matchesQuery(query)) {
-        this.queryEntities.get(Registry.getEntityQueryKey(query))!.add(entity);
+      if (Entity.matchesQuery(entity, query)) {
+        this.queryEntities.get(Registry.getEntityQueryKey(query))!.add(entity.id);
       } else {
-        this.queryEntities.get(Registry.getEntityQueryKey(query))!.delete(entity);
+        this.queryEntities.get(Registry.getEntityQueryKey(query))!.delete(entity.id);
       }
     }
   }
 
   private deleteEntityFromEntityMaps(entity: Entity) {
     for (const query of this.entityQueries) {
-      this.queryEntities.get(Registry.getEntityQueryKey(query))!.delete(entity);
+      this.queryEntities.get(Registry.getEntityQueryKey(query))!.delete(entity.id);
     }
   }
 

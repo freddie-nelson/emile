@@ -6,6 +6,6 @@ export interface TypedBody extends Matter.Body {
     rectangleWidth?: number;
     rectangleHeight?: number;
     polygonVertices?: Vec2[];
-    entity?: Entity;
+    entity?: string;
   } | null;
 }

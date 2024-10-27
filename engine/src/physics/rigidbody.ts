@@ -2,7 +2,7 @@ import { Vec2 } from "../math/vec";
 import { Component } from "../ecs/component";
 import { type } from "@colyseus/schema";
 import Matter from "matter-js";
-import { RegistryType } from "../ecs/registry";
+import { Entity } from "../ecs/entity";
 
 /**
  * Represents a rigidbody component.
@@ -10,6 +10,31 @@ import { RegistryType } from "../ecs/registry";
  * @note None of the properties on the rigidbody should be changed directly. Use the setters instead.
  */
 export class Rigidbody extends Component {
+  public static readonly COMPONENT_ID: number = 196;
+
+  public static onComponentAdded(entity: Entity, component: Component) {
+    const rigidbody = component as Rigidbody;
+
+    rigidbody.onChange(() => {
+      if (!rigidbody.body) {
+        return;
+      }
+
+      if (rigidbody.density !== rigidbody.body.density) {
+        Matter.Body.setDensity(rigidbody.body, rigidbody.density);
+      }
+
+      if (rigidbody.isStatic !== rigidbody.body.isStatic) {
+        Matter.Body.setStatic(rigidbody.body, rigidbody.isStatic);
+      }
+
+      rigidbody.body.restitution = rigidbody.restitution;
+      rigidbody.body.friction = rigidbody.friction;
+      rigidbody.body.frictionAir = rigidbody.frictionAir;
+      rigidbody.body.frictionStatic = rigidbody.frictionStatic;
+    });
+  }
+
   @type(Vec2) public velocity: Vec2 = new Vec2();
   @type("float32") public angularVelocity: number = 0;
   @type("float32") public density: number = 0.01;
@@ -24,41 +49,17 @@ export class Rigidbody extends Component {
    *
    * @warning DO NOT TOUCH THIS UNLESS YOU KNOW WHAT YOU ARE DOING.
    */
-  public body: Matter.Body | null = null;
+  public body?: Matter.Body;
 
   /**
    * Creates a new rigidbody.
    *
-   * @param type The type of the registry owning this component.
    * @param density The density of the rigidbody.
    */
-  constructor(type: RegistryType, density = 0.01) {
-    super();
+  constructor(density = 0.01) {
+    super(Rigidbody.COMPONENT_ID);
 
-    this.setDensity(density);
-
-    // only clients need to update the matter body
-    // on state changes, the source of truth is the server
-    if (type === RegistryType.CLIENT) {
-      this.onChange(() => {
-        if (!this.body) {
-          return;
-        }
-
-        if (this.density !== this.body.density) {
-          Matter.Body.setDensity(this.body, this.density);
-        }
-
-        if (this.isStatic !== this.body.isStatic) {
-          Matter.Body.setStatic(this.body, this.isStatic);
-        }
-
-        this.body.restitution = this.restitution;
-        this.body.friction = this.friction;
-        this.body.frictionAir = this.frictionAir;
-        this.body.frictionStatic = this.frictionStatic;
-      });
-    }
+    Rigidbody.setDensity(this, density);
   }
 
   /**
@@ -66,116 +67,125 @@ export class Rigidbody extends Component {
    *
    * @note This will only apply the force if the matter body has been created.
    *
+   * @param rigidbody The rigidbody.
    * @param force The force to apply.
    * @param worldPosition The world position to apply the force at. (default: the center of the rigidbody)
    */
-  public applyForce(force: Vec2, worldPosition?: Vec2) {
-    if (this.body) {
-      Matter.Body.applyForce(this.body, worldPosition ?? this.body.position, force);
+  public static applyForce(rigidbody: Rigidbody, force: Vec2, worldPosition?: Vec2) {
+    if (rigidbody.body) {
+      Matter.Body.applyForce(rigidbody.body, worldPosition ?? rigidbody.body.position, force);
     }
   }
 
   /**
    * Sets the velocity of the rigidbody.
    *
+   * @param rigidbody The rigidbody.
    * @param velocity The velocity to set.
    */
-  public setVelocity(velocity: Vec2) {
-    this.velocity = velocity;
+  public static setVelocity(rigidbody: Rigidbody, velocity: Vec2) {
+    rigidbody.velocity = velocity;
 
-    if (this.body) {
-      Matter.Body.setVelocity(this.body, velocity);
+    if (rigidbody.body) {
+      Matter.Body.setVelocity(rigidbody.body, velocity);
     }
   }
 
   /**
    * Sets the angular velocity of the rigidbody.
    *
+   * @param rigidbody The rigidbody.
    * @param angularVelocity The angular velocity to set.
    */
-  public setAngularVelocity(angularVelocity: number) {
-    this.angularVelocity = angularVelocity;
+  public static setAngularVelocity(rigidbody: Rigidbody, angularVelocity: number) {
+    rigidbody.angularVelocity = angularVelocity;
 
-    if (this.body) {
-      Matter.Body.setAngularVelocity(this.body, angularVelocity);
+    if (rigidbody.body) {
+      Matter.Body.setAngularVelocity(rigidbody.body, angularVelocity);
     }
   }
 
   /**
    * Sets the density of the rigidbody.
    *
+   * @param rigidbody The rigidbody.
    * @param density The density to set.
    */
-  public setDensity(density: number) {
-    this.density = density;
+  public static setDensity(rigidbody: Rigidbody, density: number) {
+    rigidbody.density = density;
 
-    if (this.body) {
-      Matter.Body.setDensity(this.body, density);
+    if (rigidbody.body) {
+      Matter.Body.setDensity(rigidbody.body, density);
     }
   }
 
   /**
    * Sets the restitution of the rigidbody.
    *
+   * @param rigidbody The rigidbody.
    * @param restitution The restitution to set.
    */
-  public setRestitution(restitution: number) {
-    this.restitution = restitution;
+  public static setRestitution(rigidbody: Rigidbody, restitution: number) {
+    rigidbody.restitution = restitution;
 
-    if (this.body) {
-      this.body.restitution = restitution;
+    if (rigidbody.body) {
+      rigidbody.body.restitution = restitution;
     }
   }
 
   /**
    * Sets the friction of the rigidbody.
    *
+   * @param rigidbody The rigidbody.
    * @param friction The friction to set.
    */
-  public setFriction(friction: number) {
-    this.friction = friction;
+  public static setFriction(rigidbody: Rigidbody, friction: number) {
+    rigidbody.friction = friction;
 
-    if (this.body) {
-      this.body.friction = friction;
+    if (rigidbody.body) {
+      rigidbody.body.friction = friction;
     }
   }
 
   /**
    * Sets the air friction of the rigidbody.
    *
+   * @param rigidbody The rigidbody.
    * @param frictionAir The air friction to set.
    */
-  public setFrictionAir(frictionAir: number) {
-    this.frictionAir = frictionAir;
+  public static setFrictionAir(rigidbody: Rigidbody, frictionAir: number) {
+    rigidbody.frictionAir = frictionAir;
 
-    if (this.body) {
-      this.body.frictionAir = frictionAir;
+    if (rigidbody.body) {
+      rigidbody.body.frictionAir = frictionAir;
     }
   }
 
   /**
    * Sets the static friction of the rigidbody.
    *
+   * @param rigidbody The rigidbody.
    * @param frictionStatic The static friction to set.
    */
-  public setFrictionStatic(frictionStatic: number) {
-    this.frictionStatic = frictionStatic;
+  public static setFrictionStatic(rigidbody: Rigidbody, frictionStatic: number) {
+    rigidbody.frictionStatic = frictionStatic;
 
-    if (this.body) {
-      this.body.frictionStatic = frictionStatic;
+    if (rigidbody.body) {
+      rigidbody.body.frictionStatic = frictionStatic;
     }
   }
 
   /**
    * Sets if the rigidbody is static.
    *
+   * @param rigidbody The rigidbody.
    * @param isStatic If the rigidbody is static.
    */
-  public setIsStatic(isStatic: boolean) {
-    this.isStatic = isStatic;
+  public static setIsStatic(rigidbody: Rigidbody, isStatic: boolean) {
+    rigidbody.isStatic = isStatic;
 
-    if (this.body) {
-      Matter.Body.setStatic(this.body, isStatic);
+    if (rigidbody.body) {
+      Matter.Body.setStatic(rigidbody.body, isStatic);
     }
   }
 
@@ -184,10 +194,11 @@ export class Rigidbody extends Component {
    *
    * @note This should only be called by the physics world.
    *
+   * @param rigidbody The rigidbody.
    * @param body The body to set.
    */
-  public setBody(body: Matter.Body) {
-    this.body = body;
+  public static setBody(rigidbody: Rigidbody, body: Matter.Body | undefined) {
+    rigidbody.body = body;
   }
 
   /**
@@ -195,10 +206,12 @@ export class Rigidbody extends Component {
    *
    * @note Only use this if you know what you are doing.
    *
+   * @param rigidbody The rigidbody.
+   *
    * @returns The matter body of the rigidbody.
    */
-  public getBody() {
-    return this.body;
+  public static getBody(rigidbody: Rigidbody) {
+    return rigidbody.body;
   }
 
   /**
@@ -206,22 +219,24 @@ export class Rigidbody extends Component {
    *
    * This will only update properties that may have changed, things like mass are not touched.
    * If you change these properties on the matter body the component will never know about them.
+   *
+   * @param rigidbody The rigidbody to update.
    */
-  public update() {
-    if (!this.body) {
+  public static update(rigidbody: Rigidbody) {
+    if (!rigidbody.body) {
       return;
     }
 
-    if (this.body.velocity.x !== this.velocity.x) {
-      this.velocity.x = this.body.velocity.x;
+    if (rigidbody.body.velocity.x !== rigidbody.velocity.x) {
+      rigidbody.velocity.x = rigidbody.body.velocity.x;
     }
 
-    if (this.body.velocity.y !== this.velocity.y) {
-      this.velocity.y = this.body.velocity.y;
+    if (rigidbody.body.velocity.y !== rigidbody.velocity.y) {
+      rigidbody.velocity.y = rigidbody.body.velocity.y;
     }
 
-    if (this.body.angularVelocity !== this.angularVelocity) {
-      this.angularVelocity = this.body.angularVelocity;
+    if (rigidbody.body.angularVelocity !== rigidbody.angularVelocity) {
+      rigidbody.angularVelocity = rigidbody.body.angularVelocity;
     }
   }
 }

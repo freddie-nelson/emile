@@ -171,7 +171,7 @@ export abstract class Mouse {
       return;
     }
 
-    this.pos.set(event.clientX, event.clientY);
+    Vec2.set(this.pos, event.clientX, event.clientY);
 
     this.fireMouseEvent(MouseButton.LEFT, MouseListenerType.MOVE);
     this.fireMouseEvent(MouseButton.MIDDLE, MouseListenerType.MOVE);
@@ -184,7 +184,7 @@ export abstract class Mouse {
     }
 
     for (const listener of this.buttonListeners.get(button)!.get(type)!) {
-      listener(button, this.pos.copy(), this.buttons.has(button));
+      listener(button, Vec2.copy(this.pos), this.buttons.has(button));
     }
   }
 }

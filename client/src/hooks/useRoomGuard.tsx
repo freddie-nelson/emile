@@ -41,7 +41,7 @@ export function useRoomGuard(
   }
 
   if (!room || room.id !== id) {
-    return <Navigate to={`/room/join/${id}`} />;
+    return <Navigate to={`/room/${id}/join`} />;
   }
 
   if (!state) {

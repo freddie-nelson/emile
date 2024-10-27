@@ -15,7 +15,7 @@ function LandscapeAlert() {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 z-50 w-full h-auto p-6 bg-cyan-500 text-white flex flex-col gap-3">
+    <div className="fixed bottom-0 left-0 z-50 w-full h-auto p-6 bg-black text-white flex flex-col gap-3">
       <div className="flex justify-between items-center gap-6">
         <h1 className="text-xl font-bold">Rotate your device</h1>
 

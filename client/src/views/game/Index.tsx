@@ -11,6 +11,7 @@ export function GameIndex() {
   const { id } = useParams();
   const room = useGameStore((state) => state.room)!;
   const state = useRoomState()!;
+  // console.log(state?.entities);
 
   const [engine, renderer, isEngineReady] = useEngine(room);
 

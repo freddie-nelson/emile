@@ -2,7 +2,7 @@ import { System, SystemType, SystemUpdateData } from "../ecs/system";
 import { Transform } from "../core/transform";
 import { Registry } from "../ecs/registry";
 import { Entity, EntityQuery } from "../ecs/entity";
-import { Application, ApplicationOptions, ColorSource, Sprite } from "pixi.js";
+import { Application, ApplicationOptions, ColorSource, ContainerChild } from "pixi.js";
 import { Logger } from "@shared/src/Logger";
 import { Renderable } from "./renderable";
 
@@ -63,6 +63,17 @@ export interface RendererOptions {
    * @default 50
    */
   scale?: number;
+
+  /**
+   * Wether or not to automatically set the pivot of the pixi stage to the center of the screen.
+   *
+   * This will also set the pivot whenever the renderer is resized.
+   *
+   * If you are going to set the pivot manually to something else, you should set this to false.
+   *
+   * @default true
+   */
+  autoCentrePivot?: boolean;
 }
 
 const defaultRendererOptions: Partial<RendererOptions> = {
@@ -73,19 +84,71 @@ const defaultRendererOptions: Partial<RendererOptions> = {
   autoSize: true,
   backgroundColor: "black",
   scale: 50,
+  autoCentrePivot: true,
 };
 
+export type SpriteCreatorCreate = (registry: Registry, app: Application, entity: string) => ContainerChild;
+export type SpriteCreatorUpdate = (
+  registry: Registry,
+  app: Application,
+  entity: string,
+  sprite: ContainerChild,
+  dt: number
+) => void;
+export type SpriteCreatorDelete = (
+  registry: Registry,
+  app: Application,
+  entity: string,
+  sprite: ContainerChild
+) => void;
+
+/**
+ * A sprite creator.
+ *
+ * Sprite creators are used to create, update and delete sprites in the renderer.
+ *
+ * @warning Your create and delete methods are responsible for adding/removing the sprite from the pixi stage. The renderer will not do this for you.
+ */
 export interface SpriteCreator {
+  /**
+   * The query to match entities against.
+   *
+   * The create, update and delete methods will only be called for entities that match this query.
+   *
+   * If not set, the create, update and delete methods will be called for all entities.
+   */
   readonly query?: EntityQuery;
-  readonly create?: (registry: Registry, app: Application, entity: Entity) => Sprite;
-  readonly update?: (
-    registry: Registry,
-    app: Application,
-    entity: Entity,
-    sprite: Sprite,
-    dt: number
-  ) => void;
-  readonly delete?: (registry: Registry, app: Application, entity: Entity, sprite: Sprite) => void;
+
+  /**
+   * Creates a sprite in the renderer.
+   *
+   * @param registry The registry of the renderer
+   * @param app The pixi app of the renderer
+   * @param entity The entity to create the sprite for
+   *
+   * @returns The created sprite
+   */
+  readonly create?: SpriteCreatorCreate;
+
+  /**
+   * Updates a sprite in the renderer.
+   *
+   * @param registry The registry of the renderer
+   * @param app The pixi app of the renderer
+   * @param entity The entity to update the sprite for
+   * @param sprite The sprite to update
+   * @param dt The delta time since the last engine update
+   */
+  readonly update?: SpriteCreatorUpdate;
+  /**
+   * Deletes a sprite from the renderer.
+   *
+   * @param registry The registry of the renderer
+   * @param app The pixi app of the renderer
+   * @param entity The entity to delete the sprite for
+   * @param sprite The sprite to delete
+   */
+  readonly delete?: SpriteCreatorDelete;
 }
 
 /**
@@ -95,7 +158,7 @@ export interface SpriteCreator {
  */
 export class Renderer extends System {
   private readonly options: Required<RendererOptions>;
-  private readonly sprites: Map<Entity, Map<SpriteCreator, Sprite>> = new Map();
+  private readonly sprites: Map<string, Map<SpriteCreator, ContainerChild>> = new Map();
   private readonly spriteCreators: Set<SpriteCreator> = new Set();
 
   private initialized = false;
@@ -138,8 +201,12 @@ export class Renderer extends System {
 
     // create and update sprites for each sprite creator
     for (const entity of entities) {
+      const e = registry.get(entity);
+
       for (const creator of this.spriteCreators) {
-        if (creator.query && !entity.matchesQuery(creator.query)) {
+        // skip sprites that don't match the query
+        // and/or delete sprites that no longer match the query
+        if (creator.query && !Entity.matchesQuery(e, creator.query)) {
           const entitySprites = this.sprites.get(entity);
           if (!entitySprites?.has(creator)) {
             continue;
@@ -155,12 +222,14 @@ export class Renderer extends System {
           this.sprites.set(entity, new Map());
         }
 
+        // create sprite if it doesn't exist
         const entitySprites = this.sprites.get(entity)!;
         if (!entitySprites.has(creator) && creator.create) {
           const sprite = creator.create(registry, this.app, entity);
           entitySprites.set(creator, sprite);
         }
 
+        // update sprite
         const sprite = entitySprites.get(creator)!;
         creator.update?.(registry, this.app, entity, sprite, dt);
       }
@@ -194,6 +263,10 @@ export class Renderer extends System {
     };
     await this.app.init(options);
 
+    if (this.options.autoCentrePivot) {
+      this.app.stage.scale.set(this.options.scale);
+    }
+
     this.initialized = true;
 
     if (this.options.parentElement) {
@@ -218,6 +291,10 @@ export class Renderer extends System {
       this.options.height === -1 ? parent.clientHeight : this.options.height
     );
 
+    if (this.options.autoCentrePivot) {
+      this.app.stage.scale.set(this.options.scale);
+    }
+
     parent.appendChild(this.app.canvas);
 
     if (this.resizeObserver) {
@@ -225,6 +302,10 @@ export class Renderer extends System {
     }
 
     this.resizeObserver = new ResizeObserver((entries) => {
+      if (this.options.autoCentrePivot) {
+        this.app?.stage.scale.set(this.options.scale);
+      }
+
       this.app?.resize();
     });
     this.resizeObserver.observe(parent);
@@ -272,5 +353,34 @@ export class Renderer extends System {
     }
 
     this.spriteCreators.add(creator);
+  }
+
+  /**
+   * Sets the scale of the renderer.
+   *
+   * @see RendererOptions["scale"]
+   *
+   * @param scale The scale to set.
+   */
+  public setScale(scale: number) {
+    if (!this.isInitialized() || !this.app) {
+      return Logger.errorAndThrow("CORE", "Cannot set scale before renderer is initialized.");
+    }
+
+    this.options.scale = scale;
+    this.app.stage.scale.set(scale);
+  }
+
+  /**
+   * Gets the scale of the renderer.
+   *
+   * This is the scale as set in the renderer options or through the `setScale` method.
+   *
+   * @see RendererOptions["scale"]
+   *
+   * @returns The scale of the renderer.
+   */
+  public getScale() {
+    return this.options.scale;
   }
 }

@@ -11,7 +11,7 @@ export enum SystemType {
 export interface SystemUpdateData {
   readonly engine: Engine;
   readonly registry: Registry;
-  readonly entities: Set<Entity>;
+  readonly entities: Set<string>;
   readonly dt: number;
 }
 

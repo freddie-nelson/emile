@@ -4,112 +4,127 @@ export class Vec2 extends Schema {
   @type("float64") public x: number;
   @type("float64") public y: number;
 
-  constructor(x = 0, y = 0) {
+  /**
+   * Creates a new Vec2 instance.
+   *
+   * The x and y values will be set to 0.
+   */
+  constructor();
+
+  /**
+   * Creates a new Vec2 instance.
+   *
+   * @param xy The x and y values.
+   */
+  constructor(xy: number);
+
+  /**
+   * Creates a new Vec2 instance.
+   *
+   * @param x The x value.
+   * @param y The y value.
+   */
+  constructor(x: number, y: number);
+
+  constructor(x?: number, y?: number) {
     super();
-    this.x = x;
-    this.y = y;
+
+    if (x === undefined) {
+      this.x = 0;
+      this.y = 0;
+    } else if (y === undefined) {
+      this.x = x;
+      this.y = x;
+    } else {
+      this.x = x;
+      this.y = y;
+    }
   }
 
-  public getX(): number {
-    return this.x;
+  public static set(v: Vec2, x: number, y: number): void {
+    v.x = x;
+    v.y = y;
   }
 
-  public getY(): number {
-    return this.y;
+  public static add(v: Vec2, vec: Vec2): Vec2 {
+    return new Vec2(v.x + vec.x, v.y + vec.y);
   }
 
-  public setX(x: number): void {
-    this.x = x;
+  public static sub(v: Vec2, vec: Vec2): Vec2 {
+    return new Vec2(v.x - vec.x, v.y - vec.y);
   }
 
-  public setY(y: number): void {
-    this.y = y;
+  public static mul(v: Vec2, scalar: number): Vec2 {
+    return new Vec2(v.x * scalar, v.y * scalar);
   }
 
-  public set(x: number, y: number): void {
-    this.x = x;
-    this.y = y;
-  }
+  public static div(v: Vec2, scalar: number): Vec2;
+  public static div(v: Vec2, vec: Vec2): Vec2;
 
-  public add(vec: Vec2): Vec2 {
-    return new Vec2(this.x + vec.x, this.y + vec.y);
-  }
-
-  public sub(vec: Vec2): Vec2 {
-    return new Vec2(this.x - vec.x, this.y - vec.y);
-  }
-
-  public mul(scalar: number): Vec2 {
-    return new Vec2(this.x * scalar, this.y * scalar);
-  }
-
-  public div(scalar: number): Vec2;
-  public div(vec: Vec2): Vec2;
-
-  public div(vec: Vec2 | number): Vec2 {
+  public static div(v: Vec2, vec: Vec2 | number): Vec2 {
     if (typeof vec === "number") {
-      return new Vec2(this.x / vec, this.y / vec);
+      return new Vec2(v.x / vec, v.y / vec);
     }
 
-    return new Vec2(this.x / vec.x, this.y / vec.y);
+    return new Vec2(v.x / vec.x, v.y / vec.y);
   }
 
-  public dot(vec: Vec2): number {
-    return this.x * vec.x + this.y * vec.y;
+  public static dot(v: Vec2, vec: Vec2): number {
+    return v.x * vec.x + v.y * vec.y;
   }
 
-  public length(): number {
-    return Math.sqrt(this.x * this.x + this.y * this.y);
+  public static len(v: Vec2): number {
+    return Math.sqrt(v.x * v.x + v.y * v.y);
   }
 
-  public sqrLength(): number {
-    return this.x * this.x + this.y * this.y;
+  public static sqrLen(v: Vec2): number {
+    return v.x * v.x + v.y * v.y;
   }
 
-  public normalize(): Vec2 {
-    const len = this.length();
-    return new Vec2(this.x / len, this.y / len);
+  public static normalize(v: Vec2): Vec2 {
+    const len = Vec2.len(v);
+    return new Vec2(v.x / len, v.y / len);
   }
 
-  public angle(): number {
-    return Math.atan2(this.y, this.x);
+  public static angle(v: Vec2): number {
+    return Math.atan2(v.y, v.x);
   }
 
-  public rotate(angle: number): Vec2 {
+  public static rotate(v: Vec2, angle: number): Vec2 {
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    return new Vec2(this.x * cos - this.y * sin, this.x * sin + this.y * cos);
+    return new Vec2(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
   }
 
-  public distance(vec: Vec2): number {
-    return this.sub(vec).length();
+  public static distance(v: Vec2, vec: Vec2): number {
+    return Vec2.len(Vec2.sub(v, vec));
   }
 
-  public sqrDistance(vec: Vec2): number {
-    return this.sub(vec).sqrLength();
+  public static sqrDistance(v: Vec2, vec: Vec2): number {
+    return Vec2.sqrLen(Vec2.sub(v, vec));
   }
 
-  public min(vec: Vec2): Vec2 {
-    return new Vec2(Math.min(this.x, vec.x), Math.min(this.y, vec.y));
+  public static min(v: Vec2, vec: Vec2): Vec2 {
+    return new Vec2(Math.min(v.x, vec.x), Math.min(v.y, vec.y));
   }
 
-  public max(vec: Vec2): Vec2 {
-    return new Vec2(Math.max(this.x, vec.x), Math.max(this.y, vec.y));
+  public static max(v: Vec2, vec: Vec2): Vec2 {
+    return new Vec2(Math.max(v.x, vec.x), Math.max(v.y, vec.y));
   }
 
-  public clamp(min: Vec2, max: Vec2): Vec2 {
-    return this.max(min).min(max);
+  public static clamp(v: Vec2, min: Vec2, max: Vec2): Vec2 {
+    return Vec2.min(Vec2.max(v, min), max);
   }
 
-  public copy(): Vec2 {
-    return new Vec2(this.x, this.y);
+  public static copy(v: Vec2): Vec2 {
+    return new Vec2(v.x, v.y);
   }
 
-  public equals(vec: Vec2): boolean {
-    return this.x === vec.x && this.y === vec.y;
+  public static equals(v: Vec2, vec: Vec2): boolean {
+    return v.x === vec.x && v.y === vec.y;
   }
 
-  public toString() {
-    return `(${this.x}, ${this.y})`;
+  public static toString(v: Vec2) {
+    return `(${v.x}, ${v.y})`;
   }
 }

@@ -4,11 +4,11 @@ import { Rigidbody } from "./rigidbody";
 import { Transform } from "../core/transform";
 import { Vec2 } from "../math/vec";
 import { Entity } from "../ecs/entity";
-import { Registry } from "../ecs/registry";
 import { System, SystemType, SystemUpdateData } from "../ecs/system";
 import Matter from "matter-js";
 import { Constraint } from "./constraint";
 import { Logger } from "@shared/src/Logger";
+import { Registry } from "../ecs/registry";
 
 export interface PhysicsWorldOptions {
   gravity: Vec2;
@@ -23,11 +23,26 @@ export interface PhysicsWorldOptions {
  * The physics world has a system priority of 0. You can give your systems a higher priority to run before the physics world.
  */
 export class PhysicsWorld extends System {
+  public static getCollider(entity: Entity): Collider | null {
+    if (Entity.hasComponent(entity, RectangleCollider)) {
+      return Entity.getComponent(entity, RectangleCollider);
+    } else if (Entity.hasComponent(entity, CircleCollider)) {
+      return Entity.getComponent(entity, CircleCollider);
+    } else if (Entity.hasComponent(entity, PolygonCollider)) {
+      return Entity.getComponent(entity, PolygonCollider);
+    }
+
+    return null;
+  }
+
   private readonly engine: Matter.Engine;
-  private readonly bodies: Map<Entity, Matter.Body> = new Map();
-  private readonly constraints: Map<Entity, Matter.Constraint> = new Map();
-  private readonly bodyScale: Map<Entity, Vec2> = new Map();
+  private readonly bodies: Map<string, TypedBody> = new Map();
+  private readonly matterBodies: Map<TypedBody, string> = new Map();
+  private readonly constraints: Map<string, Matter.Constraint> = new Map();
+  private readonly bodyScale: Map<string, Vec2> = new Map();
   private readonly options: PhysicsWorldOptions;
+
+  private lastRegistry?: Registry;
 
   /**
    * Creates a new physics world.
@@ -49,53 +64,58 @@ export class PhysicsWorld extends System {
   }
 
   public fixedUpdate = ({ registry, entities, dt }: SystemUpdateData) => {
+    this.lastRegistry = registry;
+
     // deletion step
     for (const entity of this.bodies.keys()) {
       // body no longer has required components for physics
       if (!entities.has(entity)) {
-        Matter.World.remove(this.engine.world, this.bodies.get(entity)!);
-        this.bodies.delete(entity);
+        this.deleteBody(entity);
       }
     }
 
     // constraint deletion step
     for (const entity of this.constraints.keys()) {
+      const e = registry.get(entity);
+
       // constraint no longer has required components for physics
-      if (!entities.has(entity) || !entity.hasComponent(Constraint)) {
-        Matter.World.remove(this.engine.world, this.constraints.get(entity)!);
-        this.constraints.delete(entity);
+      if (!entities.has(entity) || !Entity.hasComponent(e, Constraint)) {
+        this.deleteConstraint(entity);
       }
 
-      const constraint = entity.getComponent(Constraint);
+      const constraint = Entity.getComponent(e, Constraint);
 
       // entity B no longer exists or is not a valid physics entity anymore
-      if (!registry.has(constraint.entityBId) || !this.bodies.has(registry.get(constraint.entityBId))) {
-        Matter.World.remove(this.engine.world, this.constraints.get(entity)!);
-        this.constraints.delete(entity);
+      if (!registry.has(constraint.entityBId) || !this.bodies.has(constraint.entityBId)) {
+        this.deleteConstraint(entity);
       }
     }
 
     // creation step
     for (const entity of entities) {
-      const rigidbody = entity.getComponent(Rigidbody);
-      const collider = this.getCollider(entity);
+      const e = registry.get(entity);
 
-      const bodyNeedsCreated = !rigidbody.getBody() || (collider && !collider.getBody());
+      const rigidbody = Entity.getComponent(e, Rigidbody);
+      const collider = PhysicsWorld.getCollider(e);
+
+      const bodyNeedsCreated =
+        !Rigidbody.getBody(rigidbody) ||
+        (collider && !Collider.getBody(collider)) ||
+        !this.matterBodies.has(Rigidbody.getBody(rigidbody)!);
 
       // if the body needs to be created and it already exists, remove it
       if (bodyNeedsCreated && this.bodies.has(entity)) {
-        Matter.World.remove(this.engine.world, this.bodies.get(entity)!);
-        this.bodies.delete(entity);
+        this.deleteBody(entity);
       }
 
       // if the body needs to be created, create it
       if (bodyNeedsCreated) {
-        this.createBody(entity);
+        this.createBody(e);
       }
 
       // update from transform
-      const transform = entity.getComponent(Transform);
-      const body = rigidbody.getBody()!;
+      const transform = Entity.getComponent(e, Transform);
+      const body = Rigidbody.getBody(rigidbody)!;
 
       if (body.position.x !== transform.position.x || body.position.y !== transform.position.y) {
         Matter.Body.setPosition(body, { x: transform.position.x, y: body.position.y });
@@ -108,26 +128,27 @@ export class PhysicsWorld extends System {
       const scale = this.bodyScale.get(entity)!;
       if (scale.x !== transform.scale.x || scale.y !== transform.scale.y) {
         Matter.Body.scale(body, transform.scale.x / scale.x, transform.scale.y / scale.y);
-        this.bodyScale.set(entity, transform.scale.copy());
+        this.bodyScale.set(entity, Vec2.copy(transform.scale));
       }
     }
 
     // constraint creation step
     for (const entity of entities) {
-      if (!entity.hasComponent(Constraint)) {
+      const e = registry.get(entity);
+
+      if (!Entity.hasComponent(e, Constraint)) {
         continue;
       }
 
-      const constraint = entity.getComponent(Constraint);
+      const constraint = Entity.getComponent(e, Constraint);
 
       // constraint needs to be created but already exists, remove it
-      if (!constraint.getConstraint() && this.constraints.has(entity)) {
-        Matter.World.remove(this.engine.world, this.constraints.get(entity)!);
-        this.constraints.delete(entity);
+      if (!Constraint.getConstraint(constraint) && this.constraints.has(entity)) {
+        this.deleteConstraint(entity);
       }
 
       // constraint needs to be created, create it
-      if (!constraint.getConstraint()) {
+      if (!Constraint.getConstraint(constraint)) {
         if (!registry.has(constraint.entityBId)) {
           Logger.errorAndThrow(
             "CORE",
@@ -135,7 +156,7 @@ export class PhysicsWorld extends System {
           );
         }
 
-        this.createConstraint(entity, registry.get(constraint.entityBId));
+        this.createConstraint(e, registry.get(constraint.entityBId));
       }
     }
 
@@ -144,26 +165,30 @@ export class PhysicsWorld extends System {
 
     // sync step
     for (const entity of entities) {
-      const rigidbody = entity.getComponent(Rigidbody);
+      const e = registry.get(entity);
 
-      const body = rigidbody.getBody();
+      const rigidbody = Entity.getComponent(e, Rigidbody);
+
+      const body = Rigidbody.getBody(rigidbody);
       if (!body) {
         continue;
       }
 
-      rigidbody.update();
+      Rigidbody.update(rigidbody);
 
-      const collider = this.getCollider(entity);
-      collider?.update();
+      const collider = PhysicsWorld.getCollider(e);
+      if (collider) {
+        Collider.update(collider);
+      }
 
-      const transform = entity.getComponent(Transform);
-      if (body.position.x !== transform.position.x) {
+      const transform = Entity.getComponent(e, Transform);
+      if (transform.position.x !== body.position.x) {
         transform.position.x = body.position.x;
       }
-      if (body.position.y !== transform.position.y) {
+      if (transform.position.y !== body.position.y) {
         transform.position.y = body.position.y;
       }
-      if (body.angle !== transform.rotation) {
+      if (transform.rotation !== body.angle) {
         transform.rotation = body.angle;
       }
     }
@@ -189,14 +214,14 @@ export class PhysicsWorld extends System {
   }
 
   private createBody(entity: Entity) {
-    const transform = entity.getComponent(Transform);
-    const rigidbody = entity.getComponent(Rigidbody);
+    const transform = Entity.getComponent(entity, Transform);
+    const rigidbody = Entity.getComponent(entity, Rigidbody);
 
     let body: TypedBody;
     let collider: Collider | null = null;
 
-    if (entity.hasComponent(RectangleCollider)) {
-      const c = entity.getComponent(RectangleCollider);
+    if (Entity.hasComponent(entity, RectangleCollider)) {
+      const c = Entity.getComponent(entity, RectangleCollider);
       collider = c;
 
       body = Matter.Bodies.rectangle(transform.position.x, transform.position.y, c.width, c.height);
@@ -204,24 +229,24 @@ export class PhysicsWorld extends System {
       body.plugin = {};
       body.plugin.rectangleWidth = c.width;
       body.plugin.rectangleHeight = c.height;
-    } else if (entity.hasComponent(CircleCollider)) {
-      const c = entity.getComponent(CircleCollider);
+    } else if (Entity.hasComponent(entity, CircleCollider)) {
+      const c = Entity.getComponent(entity, CircleCollider);
       collider = c;
 
       body = Matter.Bodies.circle(transform.position.x, transform.position.y, c.radius);
 
       body.plugin = {};
       body.plugin.circleRadius = c.radius;
-    } else if (entity.hasComponent(PolygonCollider)) {
-      const c = entity.getComponent(PolygonCollider);
+    } else if (Entity.hasComponent(entity, PolygonCollider)) {
+      const c = Entity.getComponent(entity, PolygonCollider);
       collider = c;
 
       body = Matter.Bodies.fromVertices(transform.position.x, transform.position.y, [
-        c.vertices.map((v) => v.copy()),
+        c.vertices.map((v) => Vec2.copy(v)),
       ]);
 
       body.plugin = {};
-      body.plugin.polygonVertices = c.vertices.map((v) => v.copy());
+      body.plugin.polygonVertices = c.vertices.map((v) => Vec2.copy(v));
     } else {
       body = Matter.Bodies.circle(transform.position.x, transform.position.y, 0.1);
       body.plugin = {};
@@ -229,37 +254,38 @@ export class PhysicsWorld extends System {
 
     Matter.Body.scale(body, transform.scale.x, transform.scale.y);
 
-    body.plugin.entity = entity;
+    body.plugin.entity = entity.id;
     body.slop = this.options.slop;
 
-    rigidbody.setBody(body);
+    Rigidbody.setBody(rigidbody, body);
 
-    rigidbody.setVelocity(rigidbody.velocity);
-    rigidbody.setAngularVelocity(rigidbody.angularVelocity);
-    rigidbody.setDensity(rigidbody.density);
-    rigidbody.setRestitution(rigidbody.restitution);
-    rigidbody.setFriction(rigidbody.friction);
-    rigidbody.setFrictionAir(rigidbody.frictionAir);
-    rigidbody.setFrictionStatic(rigidbody.frictionStatic);
-    rigidbody.setIsStatic(rigidbody.isStatic);
+    Rigidbody.setVelocity(rigidbody, rigidbody.velocity);
+    Rigidbody.setAngularVelocity(rigidbody, rigidbody.angularVelocity);
+    Rigidbody.setDensity(rigidbody, rigidbody.density);
+    Rigidbody.setRestitution(rigidbody, rigidbody.restitution);
+    Rigidbody.setFriction(rigidbody, rigidbody.friction);
+    Rigidbody.setFrictionAir(rigidbody, rigidbody.frictionAir);
+    Rigidbody.setFrictionStatic(rigidbody, rigidbody.frictionStatic);
+    Rigidbody.setIsStatic(rigidbody, rigidbody.isStatic);
 
     if (collider) {
-      collider.setBody(body);
+      Collider.setBody(collider, body);
 
-      collider.setSensor(collider.isSensor);
+      Collider.setSensor(collider, collider.isSensor);
     }
 
-    this.bodies.set(entity, body);
-    this.bodyScale.set(entity, transform.scale.copy());
+    this.bodies.set(entity.id, body);
+    this.matterBodies.set(body, entity.id);
+    this.bodyScale.set(entity.id, Vec2.copy(transform.scale));
 
     Matter.World.add(this.engine.world, body);
   }
 
   private createConstraint(entityA: Entity, entityB: Entity) {
-    const constraint = entityA.getComponent(Constraint);
+    const constraint = Entity.getComponent(entityA, Constraint);
 
-    const bodyA = this.bodies.get(entityA)!;
-    const bodyB = this.bodies.get(entityB)!;
+    const bodyA = this.bodies.get(entityA.id)!;
+    const bodyB = this.bodies.get(entityB.id)!;
     if (!bodyA || !bodyB) {
       Logger.errorAndThrow("CORE", "Missing bodies during constraint creation.");
     }
@@ -274,22 +300,22 @@ export class PhysicsWorld extends System {
       length: constraint.length === -1 ? undefined : constraint.length,
     });
 
-    constraint.setConstraint(c);
-    this.constraints.set(entityA, c);
+    Constraint.setConstraint(constraint, c);
+    this.constraints.set(entityA.id, c);
 
     Matter.World.add(this.engine.world, c);
   }
 
-  private getCollider(entity: Entity): Collider | null {
-    if (entity.hasComponent(RectangleCollider)) {
-      return entity.getComponent(RectangleCollider);
-    } else if (entity.hasComponent(CircleCollider)) {
-      return entity.getComponent(CircleCollider);
-    } else if (entity.hasComponent(PolygonCollider)) {
-      return entity.getComponent(PolygonCollider);
-    }
+  private deleteBody(entity: string) {
+    Matter.World.remove(this.engine.world, this.bodies.get(entity)!);
+    this.matterBodies.delete(this.bodies.get(entity)!);
+    this.bodies.delete(entity);
+    this.bodyScale.delete(entity);
+  }
 
-    return null;
+  private deleteConstraint(entity: string) {
+    Matter.World.remove(this.engine.world, this.constraints.get(entity)!);
+    this.constraints.delete(entity);
   }
 
   private setupMatterEvents() {
@@ -307,6 +333,10 @@ export class PhysicsWorld extends System {
   }
 
   private onMatterCollisionEvent(type: ColliderEvent, pairs: Matter.Pair[]) {
+    if (!this.lastRegistry) {
+      return;
+    }
+
     for (const pair of pairs) {
       if (!pair.bodyA.plugin || !pair.bodyB.plugin) {
         continue;
@@ -318,11 +348,18 @@ export class PhysicsWorld extends System {
         continue;
       }
 
-      const colliderA = this.getCollider(entityA);
-      const colliderB = this.getCollider(entityB);
+      const eA = this.lastRegistry.get(entityA);
+      const eB = this.lastRegistry.get(entityB);
 
-      colliderA?.fire(type, pair, entityA, entityB);
-      colliderB?.fire(type, pair, entityB, entityA);
+      const colliderA = PhysicsWorld.getCollider(eA);
+      const colliderB = PhysicsWorld.getCollider(eB);
+
+      if (colliderA) {
+        Collider.fire(colliderA, type, pair, eA, eB);
+      }
+      if (colliderB) {
+        Collider.fire(colliderB, type, pair, eB, eA);
+      }
     }
   }
 }

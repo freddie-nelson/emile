@@ -1,10 +1,17 @@
 import { MapSchema, Schema, type } from "@colyseus/schema";
-import { Component, ComponentConstructor, Constructor } from "./component";
+import {
+  Component,
+  ComponentConstructor,
+  GenericComponentConstructor,
+  getComponentIdFromConstructor,
+  getComponentIdFromInstance,
+} from "./component";
 import { Logger } from "@shared/src/Logger";
 
 export type EntityQuery = Set<ComponentConstructor>;
 
 export class Entity extends Schema {
+  // ! TODO: change this to be per room/engine instance
   private static nextId = 0;
 
   /**
@@ -17,7 +24,7 @@ export class Entity extends Schema {
   /**
    * The entities components.
    *
-   * The key is the name of the component class. (component.constructor.name)
+   * The key is retrieved using `getComponentIdFromConstructor` or `getComponentIdFromInstance`.
    *
    * The value is the component instance.
    *
@@ -30,12 +37,17 @@ export class Entity extends Schema {
    *
    * If a component of the same type already exists, it will be replaced.
    *
+   * @param entity The entity to add the component to.
    * @param component The component to add to the entity.
    *
    * @returns The component instance.
+   *
+   * @warning This should only be called by the registry, use the `add` method on the registry instead.
    */
-  public addComponent<T extends Component>(component: T): T {
-    this.components.set(component.constructor.name, component);
+  public static addComponent<T extends Component>(entity: Entity, component: T): T {
+    const id = getComponentIdFromInstance(component);
+
+    entity.components.set(id, component);
     return component;
   }
 
@@ -44,14 +56,21 @@ export class Entity extends Schema {
    *
    * If the component does not exist, nothing will happen.
    *
+   * @param entity The entity.
    * @param component The component to remove from the entity.
+   *
+   * @warning This should only be called by the registry, use the `remove` method on the registry instead.
    */
-  public removeComponent<T extends Component>(component: Constructor<T>) {
-    if (!this.components.has(component.name)) {
+  public static removeComponent<T extends Component>(
+    entity: Entity,
+    component: GenericComponentConstructor<T>
+  ) {
+    const id = getComponentIdFromConstructor(component);
+    if (!entity.components.has(id)) {
       return;
     }
 
-    this.components.delete(component.name);
+    entity.components.delete(id);
   }
 
   /**
@@ -59,27 +78,39 @@ export class Entity extends Schema {
    *
    * If the component does not exist, an error will be thrown.
    *
+   * @param entity The entity.
    * @param component The component to get from the entity.
    *
    * @returns The component instance.
+   *
+   * @throws An error if the entity does not have the component.
    */
-  public getComponent<T extends Component>(component: Constructor<T>): T {
-    if (!this.components.has(component.name)) {
-      Logger.errorAndThrow("ECS", `Entity with id '${this.id}' does not have component '${component.name}'`);
+  public static getComponent<T extends Component>(
+    entity: Entity,
+    component: GenericComponentConstructor<T>
+  ): T {
+    const id = getComponentIdFromConstructor(component);
+    if (!entity.components.has(id)) {
+      Logger.errorAndThrow(
+        "ECS",
+        `Entity with id '${entity.id}' does not have component '${component.name}'`
+      );
     }
 
-    return this.components.get(component.name) as T;
+    return entity.components.get(id) as T;
   }
 
   /**
    * Checks if the entity has a component.
    *
+   * @param entity The entity.
    * @param component The component to check for.
    *
    * @returns True if the entity has the component, false otherwise.
    */
-  public hasComponent<T extends Component>(component: Constructor<T>) {
-    return this.components.has(component.name);
+  public static hasComponent<T extends Component>(entity: Entity, component: GenericComponentConstructor<T>) {
+    const id = getComponentIdFromConstructor(component);
+    return entity.components.has(id);
   }
 
   /**
@@ -87,13 +118,14 @@ export class Entity extends Schema {
    *
    * An entity matches a query if it has all the components in the query.
    *
+   * @param entity The entity.
    * @param query The query to match against.
    *
    * @returns True if the entity matches the query, false otherwise.
    */
-  public matchesQuery(query: EntityQuery) {
+  public static matchesQuery(entity: Entity, query: EntityQuery) {
     for (const component of query) {
-      if (!this.hasComponent(component)) {
+      if (!Entity.hasComponent(entity, component)) {
         return false;
       }
     }

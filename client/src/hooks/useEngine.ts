@@ -1,5 +1,6 @@
 import Engine, { EngineType } from "@engine/src/engine";
 import { Renderer } from "@engine/src/rendering/renderer";
+import PhysicsEntitySpriteCreator from "@engine/src/rendering/sprite-creators/physics-entity-sprite-creator";
 import { sharedEngineOptions } from "@shared/src/engine";
 import { State } from "@state/src/state";
 import { Room } from "colyseus.js";
@@ -21,6 +22,7 @@ export function useEngine(room: Room<State> | null) {
       ...sharedEngineOptions,
       type: EngineType.CLIENT,
       state: room.state,
+      autoStart: true,
     });
     setEngine(engine);
 
@@ -29,6 +31,8 @@ export function useEngine(room: Room<State> | null) {
       autoSize: true,
       backgroundColor: 0x000000,
     });
+    renderer.registerSpriteCreator(new PhysicsEntitySpriteCreator(0xff0000));
+
     setRenderer(renderer);
 
     engine.registry.addSystem(renderer);
