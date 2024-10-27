@@ -5,6 +5,8 @@ import { Entity, EntityQuery } from "../ecs/entity";
 import { Application, ApplicationOptions, ColorSource, ContainerChild } from "pixi.js";
 import { Logger } from "@shared/src/Logger";
 import { Renderable } from "./renderable";
+import { Camera } from "./camera";
+import Engine from "../engine";
 
 export interface RendererOptions {
   /**
@@ -65,15 +67,13 @@ export interface RendererOptions {
   scale?: number;
 
   /**
-   * Wether or not to automatically set the pivot of the pixi stage to the center of the screen.
+   * Wether or not to flip the y axis.
    *
-   * This will also set the pivot whenever the renderer is resized.
-   *
-   * If you are going to set the pivot manually to something else, you should set this to false.
+   * True will make the y axis increase upwards (sane), false will make the y axis decrease upwards (insane).
    *
    * @default true
    */
-  autoCentrePivot?: boolean;
+  flipYAxis?: boolean;
 }
 
 const defaultRendererOptions: Partial<RendererOptions> = {
@@ -84,23 +84,22 @@ const defaultRendererOptions: Partial<RendererOptions> = {
   autoSize: true,
   backgroundColor: "black",
   scale: 50,
-  autoCentrePivot: true,
+  flipYAxis: true,
 };
 
-export type SpriteCreatorCreate = (registry: Registry, app: Application, entity: string) => ContainerChild;
-export type SpriteCreatorUpdate = (
-  registry: Registry,
-  app: Application,
-  entity: string,
-  sprite: ContainerChild,
-  dt: number
-) => void;
-export type SpriteCreatorDelete = (
-  registry: Registry,
-  app: Application,
-  entity: string,
-  sprite: ContainerChild
-) => void;
+export interface SpriteCreatorData {
+  engine: Engine;
+  registry: Registry;
+  renderer: Renderer;
+  app: Application;
+  entity: string;
+  sprite: ContainerChild | null;
+  dt: number;
+}
+
+export type SpriteCreatorCreate = (data: SpriteCreatorData) => ContainerChild;
+export type SpriteCreatorUpdate = (data: SpriteCreatorData) => void;
+export type SpriteCreatorDelete = (data: SpriteCreatorData) => void;
 
 /**
  * A sprite creator.
@@ -165,6 +164,8 @@ export class Renderer extends System {
   private app: Application | null = null;
   private resizeObserver: ResizeObserver | null = null;
 
+  public readonly camera: Camera = new Camera();
+
   /**
    * Creates a new renderer.
    *
@@ -180,60 +181,13 @@ export class Renderer extends System {
     }
   }
 
-  public update = ({ registry, entities, dt }: SystemUpdateData) => {
+  public update = ({ engine, registry, entities, dt }: SystemUpdateData) => {
     if (!this.isInitialized() || !this.app) {
       return;
     }
 
-    // delete sprites for entities that no longer exist
-    for (const entity of this.sprites.keys()) {
-      if (entities.has(entity)) {
-        continue;
-      }
-
-      for (const creator of this.sprites.get(entity)!.keys()) {
-        const sprite = this.sprites.get(entity)!.get(creator)!;
-        creator.delete?.(registry, this.app, entity, sprite);
-      }
-
-      this.sprites.delete(entity);
-    }
-
-    // create and update sprites for each sprite creator
-    for (const entity of entities) {
-      const e = registry.get(entity);
-
-      for (const creator of this.spriteCreators) {
-        // skip sprites that don't match the query
-        // and/or delete sprites that no longer match the query
-        if (creator.query && !Entity.matchesQuery(e, creator.query)) {
-          const entitySprites = this.sprites.get(entity);
-          if (!entitySprites?.has(creator)) {
-            continue;
-          }
-
-          const sprite = entitySprites.get(creator)!;
-          creator.delete?.(registry, this.app, entity, sprite);
-          entitySprites.delete(creator);
-          continue;
-        }
-
-        if (!this.sprites.has(entity)) {
-          this.sprites.set(entity, new Map());
-        }
-
-        // create sprite if it doesn't exist
-        const entitySprites = this.sprites.get(entity)!;
-        if (!entitySprites.has(creator) && creator.create) {
-          const sprite = creator.create(registry, this.app, entity);
-          entitySprites.set(creator, sprite);
-        }
-
-        // update sprite
-        const sprite = entitySprites.get(creator)!;
-        creator.update?.(registry, this.app, entity, sprite, dt);
-      }
-    }
+    this.updateSpriteCreators(engine, registry, entities, dt);
+    this.updateCamera(engine, registry, dt);
 
     this.app.render();
   };
@@ -263,10 +217,6 @@ export class Renderer extends System {
     };
     await this.app.init(options);
 
-    if (this.options.autoCentrePivot) {
-      this.app.stage.scale.set(this.options.scale);
-    }
-
     this.initialized = true;
 
     if (this.options.parentElement) {
@@ -291,10 +241,6 @@ export class Renderer extends System {
       this.options.height === -1 ? parent.clientHeight : this.options.height
     );
 
-    if (this.options.autoCentrePivot) {
-      this.app.stage.scale.set(this.options.scale);
-    }
-
     parent.appendChild(this.app.canvas);
 
     if (this.resizeObserver) {
@@ -302,10 +248,6 @@ export class Renderer extends System {
     }
 
     this.resizeObserver = new ResizeObserver((entries) => {
-      if (this.options.autoCentrePivot) {
-        this.app?.stage.scale.set(this.options.scale);
-      }
-
       this.app?.resize();
     });
     this.resizeObserver.observe(parent);
@@ -382,5 +324,91 @@ export class Renderer extends System {
    */
   public getScale() {
     return this.options.scale;
+  }
+
+  private updateCamera(engine: Engine, registry: Registry, dt: number) {
+    if (!this.app) {
+      return;
+    }
+
+    this.camera.update(dt);
+
+    this.app.stage.scale.set(1);
+    this.app.stage.position.set(this.app.renderer.width / 2, this.app.renderer.height / 2);
+
+    const scale = this.options.scale * this.camera.zoom;
+    this.app.stage.scale.set(scale, this.options.flipYAxis ? -scale : scale);
+
+    this.app.stage.pivot.set(this.camera.worldCentre.x, this.camera.worldCentre.y);
+  }
+
+  private updateSpriteCreators(engine: Engine, registry: Registry, entities: Set<string>, dt: number) {
+    // delete sprites for entities that no longer exist
+    for (const entity of this.sprites.keys()) {
+      if (entities.has(entity)) {
+        continue;
+      }
+
+      for (const creator of this.sprites.get(entity)!.keys()) {
+        const sprite = this.sprites.get(entity)!.get(creator)!;
+        creator.delete?.(this.createSpriteCreatorData(engine, registry, entity, sprite, dt));
+      }
+
+      this.sprites.delete(entity);
+    }
+
+    // create and update sprites for each sprite creator
+    for (const entity of entities) {
+      const e = registry.get(entity);
+
+      for (const creator of this.spriteCreators) {
+        // skip sprites that don't match the query
+        // and/or delete sprites that no longer match the query
+        if (creator.query && !Entity.matchesQuery(e, creator.query)) {
+          const entitySprites = this.sprites.get(entity);
+          if (!entitySprites?.has(creator)) {
+            continue;
+          }
+
+          const sprite = entitySprites.get(creator)!;
+          creator.delete?.(this.createSpriteCreatorData(engine, registry, entity, sprite, dt));
+          entitySprites.delete(creator);
+          continue;
+        }
+
+        if (!this.sprites.has(entity)) {
+          this.sprites.set(entity, new Map());
+        }
+
+        // create sprite if it doesn't exist
+        const entitySprites = this.sprites.get(entity)!;
+        if (!entitySprites.has(creator) && creator.create) {
+          const sprite = creator.create(this.createSpriteCreatorData(engine, registry, entity, null, dt));
+          entitySprites.set(creator, sprite);
+        }
+
+        // update sprite
+        const sprite = entitySprites.get(creator)!;
+        creator.update?.(this.createSpriteCreatorData(engine, registry, entity, sprite, dt));
+      }
+    }
+  }
+
+  private createSpriteCreatorData(
+    engine: Engine,
+    registry: Registry,
+    entity: string,
+    sprite: ContainerChild | null,
+    dt: number
+  ): SpriteCreatorData {
+    return {
+      engine,
+      registry,
+      renderer: this,
+      app: this.app!,
+      entity,
+      sprite,
+      dt,
+    };
   }
 }

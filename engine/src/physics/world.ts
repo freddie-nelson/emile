@@ -161,7 +161,7 @@ export class PhysicsWorld extends System {
     }
 
     // update step
-    Matter.Engine.update(this.engine, dt);
+    Matter.Engine.update(this.engine, dt * 1000);
 
     // sync step
     for (const entity of entities) {

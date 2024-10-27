@@ -20,7 +20,7 @@ export default class PhysicsEntitySpriteCreator implements SpriteCreator {
     this.rigidbodyOpacity = rigidbodyOpacity;
   }
 
-  public readonly create: SpriteCreatorCreate = (registry, app, entity) => {
+  public readonly create: SpriteCreatorCreate = ({ registry, app, entity }) => {
     const e = registry.get(entity);
 
     const transform = Entity.getComponent(e, Transform);
@@ -72,20 +72,21 @@ export default class PhysicsEntitySpriteCreator implements SpriteCreator {
     return s;
   };
 
-  public readonly update: SpriteCreatorUpdate = (registry, app, entity, sprite, dt) => {
+  public readonly update: SpriteCreatorUpdate = ({ registry, app, entity, sprite, dt }) => {
     const e = registry.get(entity);
+    const s = sprite!;
 
     const transform = Entity.getComponent(e, Transform);
-    sprite.position.set(transform.position.x, transform.position.y);
-    sprite.rotation = transform.rotation;
-    sprite.scale.set(transform.scale.x, transform.scale.y);
-    sprite.zIndex = transform.zIndex;
+    s.position.set(transform.position.x, transform.position.y);
+    s.rotation = transform.rotation;
+    s.scale.set(transform.scale.x, transform.scale.y);
+    s.zIndex = transform.zIndex;
 
-    sprite.pivot.set(sprite.width / 2, sprite.height / 2);
+    s.pivot.set(s.width / 2, s.height / 2);
   };
 
-  public readonly delete: SpriteCreatorDelete = (registry, app, entity, sprite) => {
-    sprite.removeFromParent();
-    sprite.destroy();
+  public readonly delete: SpriteCreatorDelete = ({ registry, app, entity, sprite }) => {
+    sprite!.removeFromParent();
+    sprite!.destroy();
   };
 }

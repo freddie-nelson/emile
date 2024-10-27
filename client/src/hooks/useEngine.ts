@@ -32,6 +32,7 @@ export function useEngine(room: Room<State> | null) {
       backgroundColor: 0x000000,
     });
     renderer.registerSpriteCreator(new PhysicsEntitySpriteCreator(0xff0000));
+    renderer.camera.zoom = 0.5;
 
     setRenderer(renderer);
 
