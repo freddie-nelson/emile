@@ -11,6 +11,7 @@ export default defineConfig({
       "@state": path.resolve(__dirname, "../state/"),
       "@shared": path.resolve(__dirname, "../shared/"),
       "@engine": path.resolve(__dirname, "../engine/"),
+      "@game": path.resolve(__dirname, "../game/"),
     },
   },
 

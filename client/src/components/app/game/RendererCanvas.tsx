@@ -1,13 +1,13 @@
-import Engine from "@engine/src/engine";
 import { Renderer } from "@engine/src/rendering/renderer";
+import Game from "@game/src/game";
 import { HTMLAttributes, memo, useEffect, useRef } from "react";
 
 export interface RendererCanvasProps extends HTMLAttributes<HTMLDivElement> {
-  engine: Engine;
+  game: Game;
   renderer: Renderer;
 }
 
-export const RendererCanvas = memo(({ engine, renderer, ...props }: RendererCanvasProps) => {
+export const RendererCanvas = memo(({ game, renderer, ...props }: RendererCanvasProps) => {
   const container = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

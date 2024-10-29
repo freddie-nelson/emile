@@ -1,30 +1,35 @@
-import Engine, { EngineType } from "@engine/src/engine";
+import { MoveSystem } from "@game/src/systems/moveSystem";
+import { EngineType } from "@engine/src/engine";
+import { Keyboard } from "@engine/src/input/keyboard";
+import { Mouse } from "@engine/src/input/mouse";
 import { Renderer } from "@engine/src/rendering/renderer";
 import PhysicsEntitySpriteCreator from "@engine/src/rendering/sprite-creators/physics-entity-sprite-creator";
+import Game from "@game/src/game";
 import { sharedEngineOptions } from "@shared/src/engine";
+import Player from "@state/src/Player";
 import { State } from "@state/src/state";
 import { Room } from "colyseus.js";
 import { useEffect, useState } from "react";
 
-export function useEngine(room: Room<State> | null) {
-  const [engine, setEngine] = useState<Engine | null>(null);
+export function useGame(state: State | null, player?: Player, room?: Room<State>) {
+  const [game, setGame] = useState<Game | null>(null);
   const [renderer, setRenderer] = useState<Renderer | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (!room) {
+    if (!state || !player) {
       return;
     }
 
     setIsReady(false);
 
-    const engine = new Engine({
+    const game = new Game({
       ...sharedEngineOptions,
       type: EngineType.CLIENT,
-      state: room.state,
+      state: state,
       autoStart: true,
     });
-    setEngine(engine);
+    setGame(game);
 
     const renderer = new Renderer({
       autoInit: false,
@@ -36,10 +41,15 @@ export function useEngine(room: Room<State> | null) {
 
     setRenderer(renderer);
 
-    engine.registry.addSystem(renderer);
+    game.registry.addSystem(renderer);
+
+    game.registry.addSystem(new MoveSystem(player, room));
 
     // initalise async engine dependencies
     new Promise<void>(async (resolve) => {
+      Keyboard.enable();
+      Mouse.enable();
+
       await renderer.init();
 
       resolve();
@@ -54,12 +64,12 @@ export function useEngine(room: Room<State> | null) {
 
     return () => {
       setIsReady(false);
-      setEngine(null);
+      setGame(null);
       setRenderer(null);
 
-      return engine?.dispose();
+      return game?.destroy();
     };
-  }, [room]);
+  }, [state, player, room]);
 
-  return [engine, renderer, isReady && engine !== null && renderer !== null] as const;
+  return [game, renderer, isReady && game !== null && renderer !== null] as const;
 }

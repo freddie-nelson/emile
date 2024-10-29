@@ -128,7 +128,7 @@ export default class Engine {
   public readonly type: EngineType;
   public readonly registry: Registry;
   public readonly physics: PhysicsWorld;
-  public readonly actions: ActionsManager = new ActionsManager();
+  public readonly actions: ActionsManager<any> = new ActionsManager();
 
   private readonly options: Required<EngineOptions>;
   private readonly updateCallbacks: Map<UpdateCallbackType, UpdateCallback[]> = new Map();

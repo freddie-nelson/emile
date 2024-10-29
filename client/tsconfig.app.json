@@ -23,7 +23,8 @@
       "@/*": ["src/*"],
       "@engine/*": ["../engine/*"],
       "@shared/*": ["../shared/*"],
-      "@state/*": ["../state/*"]
+      "@state/*": ["../state/*"],
+      "@game/*": ["../game/*"]
     },
 
     /* Linting */
@@ -32,5 +33,5 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "../engine", "../shared", "../state"]
+  "include": ["src", "../engine", "../shared", "../state", "../game"]
 }

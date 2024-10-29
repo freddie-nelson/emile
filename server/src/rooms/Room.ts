@@ -1,10 +1,16 @@
 import { State } from "@state/src/state";
 import { Client, Room } from "colyseus";
-import { ClientToRoomMessage, RoomJoinOptions, RoomMetadata, roomOptionsSchema } from "@shared/src/room";
+import {
+  ClientToRoomMessage,
+  gameActionSchema,
+  RoomJoinOptions,
+  RoomMetadata,
+  roomOptionsSchema,
+} from "@shared/src/room";
 import Player from "@state/src/Player";
 import RoomIdGenerator from "@/helpers/RoomIdGenerator";
 import { zodErrorToUserFriendlyMessage } from "@shared/src/zod";
-import Engine, { EngineType } from "@engine/src/engine";
+import { EngineType } from "@engine/src/engine";
 import { sharedEngineOptions } from "@shared/src/engine";
 import { Logger } from "@shared/src/Logger";
 import { Transform } from "@engine/src/core/transform";
@@ -12,13 +18,16 @@ import { Rigidbody } from "@engine/src/physics/rigidbody";
 import { CircleCollider } from "@engine/src/physics/collider";
 import { Vec2 } from "@engine/src/math/vec";
 import { Renderable } from "@engine/src/rendering/renderable";
+import Game from "@game/src/game";
+import { ActionType, MovePlayerData } from "@game/src/actions";
+import { ActionHandler } from "@/ActionHandler";
 
 export class DefaultRoom extends Room<State, RoomMetadata> {
   private static LOBBY_CHANNEL = "lobby";
   private static SIMULATION_INTERVAL = 1000 / 60;
   private static PATCH_RATE = 1000 / 30;
 
-  private engine?: Engine;
+  private game?: Game;
 
   maxClients = 10;
 
@@ -34,16 +43,29 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
     this.setState(state);
     this.setPatchRate(DefaultRoom.PATCH_RATE);
 
-    this.engine = new Engine({
+    this.game = new Game({
       ...sharedEngineOptions,
       type: EngineType.SERVER,
       state: this.state,
       manualUpdate: true,
     });
 
-    this.setSimulationInterval(() => this.engine?.update(), DefaultRoom.SIMULATION_INTERVAL);
+    this.setSimulationInterval(() => this.game?.update(), DefaultRoom.SIMULATION_INTERVAL);
 
     this.onMessage(ClientToRoomMessage.START_GAME, this.handleStartGame.bind(this));
+
+    this.onMessage(ClientToRoomMessage.GAME_ACTION, (client, message) => {
+      if (!this.getPlayer(client.sessionId) || !this.game || !this.state.roomInfo.started) {
+        return;
+      }
+
+      const { success, data } = gameActionSchema.safeParse(message);
+      if (!success) {
+        return;
+      }
+
+      ActionHandler.handleAction(this.game, this.getPlayer(client.sessionId)!, data.action, data.data);
+    });
   }
 
   async onAuth(client: Client, options: RoomJoinOptions) {
@@ -64,8 +86,8 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
   onJoin(client: Client, options: RoomJoinOptions) {
     console.log("onJoin", client.sessionId, options);
 
-    if (!this.engine) {
-      return Logger.errorAndThrow("DEFAULTROOM", "Engine not set in onJoin");
+    if (!this.game) {
+      return Logger.errorAndThrow("DEFAULTROOM", "Game not set in onJoin");
     }
 
     if (this.hasReachedMaxClients()) {
@@ -91,8 +113,8 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
   }
 
   private handleStartGame(client: Client) {
-    if (!this.engine) {
-      return Logger.errorAndThrow("DEFAULTROOM", "Engine not set in handleStartGame");
+    if (!this.game) {
+      return Logger.errorAndThrow("DEFAULTROOM", "Game not set in handleStartGame");
     }
 
     if (this.state.roomInfo.started) {
@@ -106,13 +128,29 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
 
     this.setStarted(true);
 
+    // create players
     for (const p of this.state.players.values()) {
-      const playerEntity = this.engine.registry.create();
-      this.engine.registry.add(playerEntity, new Transform(new Vec2((Math.random() - 0.5) * 2)));
-      this.engine.registry.add(playerEntity, new Rigidbody());
-      this.engine.registry.add(playerEntity, new CircleCollider(0.5));
-      this.engine.registry.add(playerEntity, new Renderable());
+      this.createPlayerEntity(p);
     }
+  }
+
+  private createPlayerEntity(p: Player) {
+    if (!this.game) {
+      return;
+    }
+
+    const registry = this.game.registry;
+
+    const playerEntity = registry.create();
+    registry.add(playerEntity, new Transform(new Vec2((Math.random() - 0.5) * 2)));
+    registry.add(playerEntity, new Rigidbody());
+    registry.add(playerEntity, new CircleCollider(0.5));
+    registry.add(playerEntity, new Renderable());
+
+    const rigidbody = registry.get(playerEntity, Rigidbody);
+    rigidbody.frictionAir = 0.05;
+
+    p.entity = playerEntity;
   }
 
   private getPlayer(sessionId: string) {
@@ -133,17 +171,17 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
    * Will not set the value if the engine is not set or the room is not startable and trying to start.
    */
   private setStarted(started: boolean) {
-    if (!this.engine || (!this.state.roomInfo.startable && started)) {
+    if (!this.game || (!this.state.roomInfo.startable && started)) {
       return;
     }
 
     this.state.roomInfo.started = started;
 
     if (started) {
-      this.engine.start();
+      this.game.start();
       this.setMetadata({ joinable: false });
     } else {
-      this.engine.stop();
+      this.game.stop();
       this.setMetadata({ joinable: true });
     }
   }

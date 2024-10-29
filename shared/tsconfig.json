@@ -16,8 +16,9 @@
 
     "baseUrl": ".",
     "paths": {
-      "@engine/*": ["../engine/*"]
+      "@engine/*": ["../engine/*"],
+      "@game/*": ["../game/*"]
     }
   },
-  "include": ["src", "../engine"]
+  "include": ["src", "../engine", "../game"]
 }

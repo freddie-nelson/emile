@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "outDir": "build",
-    "target": "ES2020",
+    "target": "ESNext",
     "module": "CommonJS",
     "moduleResolution": "node",
     "strict": true,
@@ -16,12 +16,10 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@engine/*": ["../engine/*"],
       "@state/*": ["../state/*"],
       "@shared/*": ["../shared/*"],
-      "@game/*": ["../game/*"]
+      "@engine/*": ["../engine/*"]
     }
   },
-  "include": ["src", "../engine", "../ecs", "../state", "../shared", "../game"]
+  "include": ["src", "../ecs", "../state", "../shared", "../engine"]
 }

@@ -1,3 +1,4 @@
+import { ActionType } from "@game/src/actions";
 import { z } from "zod";
 
 export type RoomName = "room";
@@ -8,6 +9,7 @@ export interface RoomMetadata {
 
 export enum ClientToRoomMessage {
   START_GAME,
+  GAME_ACTION,
 }
 
 export const roomOptionsSchema = z.object({
@@ -15,3 +17,10 @@ export const roomOptionsSchema = z.object({
 });
 
 export type RoomJoinOptions = z.infer<typeof roomOptionsSchema>;
+
+export const gameActionSchema = z.object({
+  action: z.nativeEnum(ActionType),
+  data: z.any(),
+});
+
+export type GameActionMessage = z.infer<typeof gameActionSchema>;

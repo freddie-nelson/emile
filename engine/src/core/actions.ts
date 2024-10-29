@@ -1,18 +1,20 @@
 import Engine from "../engine";
 
-export type ActionHandler<T> = (engine: Engine, action: string, data: T, dt: number) => void;
+export type ActionType = any;
 
-export type ActionDataValidator = (action: string, data: any) => boolean;
+export type ActionHandler<A, T> = (engine: Engine, action: A, data: T, dt: number) => void;
 
-export interface Action {
-  action: string;
+export type ActionDataValidator<A> = (action: A, data: any) => boolean;
+
+export interface Action<A> {
+  action: A;
   data: any;
 }
 
-export class ActionsManager {
-  private readonly handlers: Map<string, ActionHandler<any>> = new Map();
-  private readonly validators: Map<string, ActionDataValidator> = new Map();
-  private readonly actionQueue: Action[] = [];
+export class ActionsManager<T> {
+  private readonly handlers: Map<T, ActionHandler<T, any>> = new Map();
+  private readonly validators: Map<T, ActionDataValidator<T>> = new Map();
+  private readonly actionQueue: Action<T>[] = [];
 
   /**
    * Enqueues an action to be fired on the next flush.
@@ -20,7 +22,7 @@ export class ActionsManager {
    * @param action The action to enqueue.
    * @param data The data for the action.
    */
-  public enqueue(action: string, data: any) {
+  public enqueue(action: T, data: any) {
     this.actionQueue.push({ action, data });
   }
 
@@ -36,6 +38,8 @@ export class ActionsManager {
     for (const action of this.actionQueue) {
       this.fire(engine, action.action, action.data, dt);
     }
+
+    this.actionQueue.length = 0;
   }
 
   /**
@@ -48,7 +52,7 @@ export class ActionsManager {
    * @param data The action's data.
    * @param dt The delta time for the action.
    */
-  public fire(engine: Engine, action: string, data: any, dt: number) {
+  public fire(engine: Engine, action: T, data: any, dt: number) {
     const handler = this.handlers.get(action);
     if (!handler) {
       return;
@@ -71,7 +75,7 @@ export class ActionsManager {
    * @param handler The handler for the action.
    * @param validator The validator for the action data.
    */
-  public register<T>(action: string, handler: ActionHandler<T>, validator: ActionDataValidator) {
+  public register<D>(action: T, handler: ActionHandler<T, D>, validator: ActionDataValidator<T>) {
     this.handlers.set(action, handler);
     this.validators.set(action, validator);
   }
@@ -81,7 +85,7 @@ export class ActionsManager {
    *
    * @param action The action to unregister the handler for.
    */
-  public unregister(action: string) {
+  public unregister(action: T) {
     this.handlers.delete(action);
     this.validators.delete(action);
   }

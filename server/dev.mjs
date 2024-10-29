@@ -18,6 +18,7 @@ const runCommand = (name, command, args) => {
   return new Promise((resolve) => {
     p = spawn(command, args, {
       stdio: "inherit",
+      shell: true,
     });
 
     p.once("exit", (code) => {
@@ -75,6 +76,7 @@ const stop = async () => {
     p.stdout = null;
     p.stderr = null;
     p.kill("SIGINT");
+    spawn("taskkill", ["/pid", p.pid, "/f", "/t"]);
     killed = true;
   });
 

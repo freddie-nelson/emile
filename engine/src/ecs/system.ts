@@ -1,5 +1,6 @@
+import { State } from "@state/src/state";
 import Engine from "../engine";
-import { Entity, EntityQuery } from "./entity";
+import { EntityQuery } from "./entity";
 import { Registry } from "./registry";
 
 export enum SystemType {
