@@ -7,12 +7,30 @@ export function RoomJoin() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [isError, setIsError] = useState(false);
   const joinRoomById = useGameStore((state) => state.joinRoomById);
+  const isRoomJoinable = useGameStore((state) => state.isRoomJoinable);
+
+  const [foundRoom, setFoundRoom] = useState(false);
+  const [isError, setIsError] = useState(false);
 
   useEffect(() => {
     if (!id) {
       setIsError(true);
+      return;
+    }
+
+    isRoomJoinable(id).then((joinable) => {
+      if (!joinable) {
+        alert("Room does not exist anymore or is not joinable.");
+        navigate("/");
+      } else {
+        setFoundRoom(true);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!foundRoom || !id || isError) {
       return;
     }
 
@@ -31,7 +49,7 @@ export function RoomJoin() {
         alert(`Failed to connect to room. Error: ${(error as Error).message}`);
         setIsError(true);
       });
-  }, []);
+  }, [foundRoom]);
 
   if (!id || isError) {
     return <Navigate to="/" />;

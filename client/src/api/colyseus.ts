@@ -49,6 +49,17 @@ export class ColyseusClient {
     return r;
   }
 
+  public async isRoomJoinable(room: RoomName, id: string): Promise<boolean> {
+    try {
+      const rooms = await this.getAvailableRooms<RoomMetadata>(room);
+      const availableRooms = rooms.filter((r) => r.metadata?.joinable);
+
+      return availableRooms.some((r) => r.roomId === id);
+    } catch (error) {
+      return false;
+    }
+  }
+
   public async getAvailableRooms<T>(room: RoomName): Promise<RoomAvailable<T>[]> {
     return this.client.getAvailableRooms<T>(room);
   }

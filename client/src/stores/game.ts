@@ -14,6 +14,7 @@ export interface GameStore {
   createRoom: (options: RoomJoinOptions) => Promise<Room<State>>;
   joinOrCreateRoom: (options: RoomJoinOptions) => Promise<Room<State>>;
   joinRoomById: (roomId: string, options: RoomJoinOptions) => Promise<Room<State>>;
+  isRoomJoinable: (id: string) => Promise<boolean>;
 
   setRoom: (room: Room<State>) => void;
   setEngine: (engine: Engine) => void;
@@ -41,6 +42,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ room });
 
     return room;
+  },
+  isRoomJoinable: async (id: string) => {
+    return await get().colyseus.isRoomJoinable("room", id);
   },
 
   setRoom: (room: Room<State>) => set({ room }),
