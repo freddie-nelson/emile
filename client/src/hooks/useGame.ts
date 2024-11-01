@@ -10,6 +10,7 @@ import Player from "@state/src/Player";
 import { State } from "@state/src/state";
 import { Room } from "colyseus.js";
 import { useEffect, useState } from "react";
+import { ColyseusClient } from "@/api/colyseus";
 
 export function useGame(state: State | null, player?: Player, room?: Room<State>) {
   const [game, setGame] = useState<Game | null>(null);
@@ -43,7 +44,7 @@ export function useGame(state: State | null, player?: Player, room?: Room<State>
 
     game.registry.addSystem(renderer);
 
-    game.registry.addSystem(new MoveSystem(player, room));
+    game.registry.addSystem(new MoveSystem(player, room, () => (room ? ColyseusClient.getPing(room.id) : 0)));
 
     // initalise async engine dependencies
     new Promise<void>(async (resolve) => {

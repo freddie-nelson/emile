@@ -6,6 +6,7 @@ import {
   RoomJoinOptions,
   RoomMetadata,
   roomOptionsSchema,
+  RoomToClientMessage,
 } from "@shared/src/room";
 import Player from "@state/src/Player";
 import RoomIdGenerator from "@/helpers/RoomIdGenerator";
@@ -52,7 +53,10 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
 
     this.setSimulationInterval(() => this.game?.update(), DefaultRoom.SIMULATION_INTERVAL);
 
+    // setup messages
     this.onMessage(ClientToRoomMessage.START_GAME, this.handleStartGame.bind(this));
+
+    this.onMessage(ClientToRoomMessage.PING, (client) => client.send(RoomToClientMessage.PONG));
 
     this.onMessage(ClientToRoomMessage.GAME_ACTION, (client, message) => {
       if (!this.getPlayer(client.sessionId) || !this.game || !this.state.roomInfo.started) {

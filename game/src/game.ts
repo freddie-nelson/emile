@@ -4,7 +4,7 @@ import { PlayerSystem } from "./systems/playerSystem";
 import Player from "@state/src/Player";
 import { Vec2 } from "@engine/src/math/vec";
 import { Rigidbody } from "@engine/src/physics/rigidbody";
-import { CircleCollider } from "@engine/src/physics/collider";
+import { CircleCollider, RectangleCollider } from "@engine/src/physics/collider";
 import { Renderable } from "@engine/src/rendering/renderable";
 import { Transform } from "@engine/src/core/transform";
 
@@ -80,7 +80,7 @@ export default class Game {
     const playerEntity = registry.create();
     registry.add(playerEntity, new Transform(new Vec2((Math.random() - 0.5) * 2)));
     registry.add(playerEntity, new Rigidbody());
-    registry.add(playerEntity, new CircleCollider(1));
+    registry.add(playerEntity, new RectangleCollider(1.5, 1.5));
     registry.add(playerEntity, new Renderable());
 
     const rigidbody = registry.get(playerEntity, Rigidbody);

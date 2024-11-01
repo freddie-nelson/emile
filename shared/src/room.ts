@@ -7,8 +7,13 @@ export interface RoomMetadata {
   joinable: boolean;
 }
 
+export enum RoomToClientMessage {
+  PONG,
+}
+
 export enum ClientToRoomMessage {
   START_GAME,
+  PING,
   GAME_ACTION,
 }
 

@@ -10,12 +10,14 @@ import { ActionType, MovePlayerData } from "../actions";
 export class MoveSystem extends System {
   private readonly player: Player;
   private readonly room?: Room<State>;
+  private readonly getActionDelay?: () => number;
 
-  constructor(player: Player, room?: Room<State>) {
+  constructor(player: Player, room?: Room<State>, getActionDelay?: () => number) {
     super(SystemType.CLIENT, new Set([]));
 
     this.player = player;
     this.room = room;
+    this.getActionDelay = getActionDelay;
   }
 
   public update = ({ engine, registry }: SystemUpdateData) => {
@@ -38,10 +40,14 @@ export class MoveSystem extends System {
     }
 
     if (dir.x !== 0 || dir.y !== 0) {
-      engine.actions.enqueue(ActionType.MOVE_PLAYER, {
-        player: this.player,
-        dir,
-      } satisfies MovePlayerData);
+      engine.actions.enqueue(
+        ActionType.MOVE_PLAYER,
+        {
+          player: this.player,
+          dir,
+        } satisfies MovePlayerData,
+        this.getActionDelay?.()
+      );
 
       this.room?.send(ClientToRoomMessage.GAME_ACTION, {
         action: ActionType.MOVE_PLAYER,

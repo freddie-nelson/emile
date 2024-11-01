@@ -21,9 +21,16 @@ export class ActionsManager<T> {
    *
    * @param action The action to enqueue.
    * @param data The data for the action.
+   * @param delay The delay in milliseconds before enqueueing the action, this is useful to simulate sending the action to the server on the client.
    */
-  public enqueue(action: T, data: any) {
-    this.actionQueue.push({ action, data });
+  public enqueue(action: T, data: any, delay?: number) {
+    if (delay) {
+      setTimeout(() => {
+        this.actionQueue.push({ action, data });
+      }, delay);
+    } else {
+      this.actionQueue.push({ action, data });
+    }
   }
 
   /**

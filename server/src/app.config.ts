@@ -12,6 +12,8 @@ export default config({
      * Define your room handlers:
      */
     gameServer.define("room" satisfies RoomName, DefaultRoom);
+
+    // gameServer.simulateLatency(100);
   },
 
   initializeExpress: (app) => {
