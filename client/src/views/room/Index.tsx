@@ -9,9 +9,11 @@ export function RoomIndex() {
   const { id } = useParams();
 
   const room = useGameStore((state) => state.room)!;
+  const leaveGame = useGameStore((state) => state.leaveGame);
+
   const state = useRoomState()!;
 
-  const guard = useRoomGuard(id, room, state);
+  const guard = useRoomGuard(id, room, state, leaveGame);
   if (guard) {
     return guard;
   }

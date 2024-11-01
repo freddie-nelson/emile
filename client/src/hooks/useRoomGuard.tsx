@@ -1,5 +1,5 @@
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Room } from "colyseus.js";
 import { State } from "@state/src/state";
@@ -33,14 +33,50 @@ import { State } from "@state/src/state";
 export function useRoomGuard(
   id: string | undefined,
   room: Room<State> | null,
-  state: State | undefined
+  state: State | undefined,
+  onLeaveRoom: () => void,
+  guardOnLeave = true,
+  guardOnError = true
 ): ReactNode | null {
+  const [left, setLeft] = useState(false);
+
+  useEffect(() => {
+    if (!room) {
+      return;
+    }
+
+    const cb = () => {
+      alert("You have left or been disconnected from the room.");
+
+      onLeaveRoom();
+      setLeft(true);
+    };
+
+    if (guardOnLeave) {
+      room.onLeave(cb);
+    }
+
+    if (guardOnError) {
+      room.onError(cb);
+    }
+
+    return () => {
+      room?.onLeave.remove(cb);
+    };
+  }, [room, onLeaveRoom, guardOnLeave, guardOnError]);
+
+  if (left) {
+    return <Navigate to="/" />;
+  }
+
   // If no id, redirect to home
   if (!id) {
+    onLeaveRoom();
     return <Navigate to="/" />;
   }
 
   if (!room || room.id !== id) {
+    onLeaveRoom();
     return <Navigate to={`/room/${id}/join`} />;
   }
 

@@ -1,6 +1,12 @@
 import Engine, { EngineOptions } from "@engine/src/engine";
 import { ActionType, movePlayerAction, movePlayerActionValidator } from "./actions";
 import { PlayerSystem } from "./systems/playerSystem";
+import Player from "@state/src/Player";
+import { Vec2 } from "@engine/src/math/vec";
+import { Rigidbody } from "@engine/src/physics/rigidbody";
+import { CircleCollider } from "@engine/src/physics/collider";
+import { Renderable } from "@engine/src/rendering/renderable";
+import { Transform } from "@engine/src/core/transform";
 
 export default class Game {
   private readonly options: EngineOptions;
@@ -65,6 +71,28 @@ export default class Game {
     this._engine.stop();
     this._engine = new Engine(this.options);
   }
+
+  // game logic
+
+  public createPlayer(player: Player) {
+    const registry = this.registry;
+
+    const playerEntity = registry.create();
+    registry.add(playerEntity, new Transform(new Vec2((Math.random() - 0.5) * 2)));
+    registry.add(playerEntity, new Rigidbody());
+    registry.add(playerEntity, new CircleCollider(1));
+    registry.add(playerEntity, new Renderable());
+
+    const rigidbody = registry.get(playerEntity, Rigidbody);
+    rigidbody.frictionAir = 0.05;
+    rigidbody.friction = 0.05;
+
+    player.entity = playerEntity;
+
+    return playerEntity;
+  }
+
+  // getters
 
   public get engine() {
     return this._engine;

@@ -1,6 +1,7 @@
 import { RendererCanvas } from "@/components/app/game/RendererCanvas";
 import { AspectRatio } from "@/components/shared/AspectRatio";
 import { LoadingOverlay } from "@/components/shared/LoadingOverlay";
+import { useBeforeRouteLeave } from "@/hooks/useBeforeRouteLeave";
 import { useGame } from "@/hooks/useGame";
 import { useRoomGuard } from "@/hooks/useRoomGuard";
 import { useRoomState } from "@/hooks/useRoomState";
@@ -9,7 +10,10 @@ import { useParams } from "react-router-dom";
 
 export function GameIndex() {
   const { id } = useParams();
+
   const room = useGameStore((state) => state.room)!;
+  const leaveGame = useGameStore((state) => state.leaveGame);
+
   const state = useRoomState()!;
 
   const [game, renderer, isEngineReady] = useGame(
@@ -18,7 +22,9 @@ export function GameIndex() {
     room
   );
 
-  const guard = useRoomGuard(id, room, state);
+  useBeforeRouteLeave(leaveGame);
+
+  const guard = useRoomGuard(id, room, state, leaveGame);
   if (guard) {
     return guard;
   }

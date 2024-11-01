@@ -1,9 +1,8 @@
 import { useGameStore } from "@/stores/game";
-import { State } from "@state/src/state";
-import debounce from "debounce";
 import { useEffect, useState } from "react";
+import { throttle } from "throttle-debounce";
 
-export function useRoomState(wait: number = 1000) {
+export function useRoomState(wait: number = 500) {
   const room = useGameStore((state) => state.room);
   const [state, setState] = useState(room?.state);
 
@@ -12,13 +11,7 @@ export function useRoomState(wait: number = 1000) {
 
     setState(room.state.clone());
 
-    const cb = debounce(
-      (newState: State) => {
-        setState(newState.clone());
-      },
-      wait,
-      { immediate: true }
-    );
+    const cb = throttle(wait, () => setState(room.state.clone()));
     room.onStateChange(cb);
 
     return () => {

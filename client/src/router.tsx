@@ -3,11 +3,16 @@ import { Index } from "./views/Index";
 import { RoomIndex } from "./views/room/Index";
 import { RoomJoin } from "./views/room/Join";
 import { GameIndex } from "./views/game/Index";
+import { NoGameRoute } from "./components/shared/NoGameRoute";
 
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <Index />,
+    element: (
+      <NoGameRoute>
+        <Index />
+      </NoGameRoute>
+    ),
   },
   {
     path: "/room/:id",
@@ -15,7 +20,11 @@ export const router = createBrowserRouter([
   },
   {
     path: "/room/:id/join",
-    element: <RoomJoin />,
+    element: (
+      <NoGameRoute>
+        <RoomJoin />
+      </NoGameRoute>
+    ),
   },
   {
     path: "/game/:id",

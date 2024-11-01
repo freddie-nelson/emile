@@ -7,7 +7,7 @@ export enum ActionType {
   MOVE_PLAYER,
 }
 
-export const PLAYER_MOVE_FORCE = 0.000001;
+export const PLAYER_MOVE_FORCE = 0.000004;
 
 export interface MovePlayerData {
   player: Player;

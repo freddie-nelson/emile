@@ -130,27 +130,8 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
 
     // create players
     for (const p of this.state.players.values()) {
-      this.createPlayerEntity(p);
+      this.game?.createPlayer(p);
     }
-  }
-
-  private createPlayerEntity(p: Player) {
-    if (!this.game) {
-      return;
-    }
-
-    const registry = this.game.registry;
-
-    const playerEntity = registry.create();
-    registry.add(playerEntity, new Transform(new Vec2((Math.random() - 0.5) * 2)));
-    registry.add(playerEntity, new Rigidbody());
-    registry.add(playerEntity, new CircleCollider(0.5));
-    registry.add(playerEntity, new Renderable());
-
-    const rigidbody = registry.get(playerEntity, Rigidbody);
-    rigidbody.frictionAir = 0.05;
-
-    p.entity = playerEntity;
   }
 
   private getPlayer(sessionId: string) {
