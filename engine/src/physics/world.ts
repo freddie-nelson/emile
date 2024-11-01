@@ -115,12 +115,26 @@ export class PhysicsWorld extends System {
         this.createBody(e);
       }
 
-      // update from transform
-      const transform = Entity.getComponent(e, Transform);
+      // update from rigidbody
       const body = Rigidbody.getBody(rigidbody)!;
 
-      Matter.Body.setPosition(body, { x: transform.position.x, y: transform.position.y });
-      Matter.Body.setAngle(body, transform.rotation);
+      if (rigidbody.velocity.x !== body.velocity.x || rigidbody.velocity.y !== body.velocity.y) {
+        Matter.Body.setVelocity(body, rigidbody.velocity);
+      }
+
+      if (rigidbody.angularVelocity !== body.angularVelocity) {
+        Matter.Body.setAngularVelocity(body, rigidbody.angularVelocity);
+      }
+
+      // update from transform
+      const transform = Entity.getComponent(e, Transform);
+
+      if (transform.position.x !== body.position.x || transform.position.y !== body.position.y) {
+        Matter.Body.setPosition(body, { x: transform.position.x, y: transform.position.y });
+      }
+      if (transform.rotation !== body.angle) {
+        Matter.Body.setAngle(body, transform.rotation);
+      }
 
       const scale = this.bodyScale.get(entity)!;
       if (scale.x !== transform.scale.x || scale.y !== transform.scale.y) {
@@ -179,9 +193,6 @@ export class PhysicsWorld extends System {
       }
 
       const transform = Entity.getComponent(e, Transform);
-      // console.log("transform:", transform.position.x, transform.position.y);
-      // console.log("body:", body.position.x, body.position.y);
-
       transform.position.x = body.position.x;
       transform.position.y = body.position.y;
       transform.rotation = body.angle;
