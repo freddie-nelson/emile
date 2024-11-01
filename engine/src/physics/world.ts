@@ -39,7 +39,6 @@ export class PhysicsWorld extends System {
   private readonly bodies: Map<string, TypedBody> = new Map();
   private readonly matterBodies: Map<TypedBody, string> = new Map();
   private readonly constraints: Map<string, Matter.Constraint> = new Map();
-  private readonly bodyScale: Map<string, Vec2> = new Map();
   private readonly options: PhysicsWorldOptions;
 
   private lastRegistry?: Registry;
@@ -101,9 +100,8 @@ export class PhysicsWorld extends System {
       const bodyNeedsCreated =
         !Rigidbody.getBody(rigidbody) ||
         (collider && !Collider.getBody(collider)) ||
-        !this.matterBodies.has(Rigidbody.getBody(rigidbody)!);
-
-      // TODO: body needs to be recreated if the collider type changes
+        !this.matterBodies.has(Rigidbody.getBody(rigidbody)!) ||
+        collider?.type !== Rigidbody.getBody(rigidbody)!.plugin!.colliderType;
 
       // if the body needs to be created and it already exists, remove it
       if (bodyNeedsCreated && this.bodies.has(entity)) {
@@ -112,6 +110,7 @@ export class PhysicsWorld extends System {
 
       // if the body needs to be created, create it
       if (bodyNeedsCreated) {
+        console.log("Creating body for entity", entity);
         this.createBody(e);
       }
 
@@ -136,10 +135,10 @@ export class PhysicsWorld extends System {
         Matter.Body.setAngle(body, transform.rotation);
       }
 
-      const scale = this.bodyScale.get(entity)!;
-      if (scale.x !== transform.scale.x || scale.y !== transform.scale.y) {
+      const scale = body.plugin!.bodyScale;
+      if (scale && (scale.x !== transform.scale.x || scale.y !== transform.scale.y)) {
         Matter.Body.scale(body, transform.scale.x / scale.x, transform.scale.y / scale.y);
-        this.bodyScale.set(entity, Vec2.copy(transform.scale));
+        body.plugin!.bodyScale = Vec2.copy(transform.scale);
       }
     }
 
@@ -260,6 +259,9 @@ export class PhysicsWorld extends System {
     Matter.Body.scale(body, transform.scale.x, transform.scale.y);
 
     body.plugin.entity = entity.id;
+    body.plugin.colliderType = collider?.type;
+    body.plugin.bodyScale = Vec2.copy(transform.scale);
+
     body.slop = this.options.slop;
 
     Rigidbody.setBody(rigidbody, body);
@@ -281,7 +283,6 @@ export class PhysicsWorld extends System {
 
     this.bodies.set(entity.id, body);
     this.matterBodies.set(body, entity.id);
-    this.bodyScale.set(entity.id, Vec2.copy(transform.scale));
 
     Matter.World.add(this.engine.world, body);
   }
@@ -315,7 +316,6 @@ export class PhysicsWorld extends System {
     Matter.World.remove(this.engine.world, this.bodies.get(entity)!);
     this.matterBodies.delete(this.bodies.get(entity)!);
     this.bodies.delete(entity);
-    this.bodyScale.delete(entity);
   }
 
   private deleteConstraint(entity: string) {

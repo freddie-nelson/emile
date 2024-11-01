@@ -3,6 +3,7 @@ import { Component } from "../ecs/component";
 import { type } from "@colyseus/schema";
 import Matter from "matter-js";
 import { Entity } from "../ecs/entity";
+import { TypedBody } from "../matter";
 
 /**
  * Represents a rigidbody component.
@@ -49,7 +50,7 @@ export class Rigidbody extends Component {
    *
    * @warning DO NOT TOUCH THIS UNLESS YOU KNOW WHAT YOU ARE DOING.
    */
-  public body?: Matter.Body;
+  public body?: TypedBody;
 
   /**
    * Creates a new rigidbody.
@@ -197,7 +198,7 @@ export class Rigidbody extends Component {
    * @param rigidbody The rigidbody.
    * @param body The body to set.
    */
-  public static setBody(rigidbody: Rigidbody, body: Matter.Body | undefined) {
+  public static setBody(rigidbody: Rigidbody, body: TypedBody | undefined) {
     rigidbody.body = body;
   }
 

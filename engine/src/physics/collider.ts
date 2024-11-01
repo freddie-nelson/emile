@@ -197,7 +197,7 @@ export abstract class Collider extends Component {
    * @param collider The collider.
    * @param body The matter body to set.
    */
-  public static setBody(collider: Collider, body: Matter.Body | undefined) {
+  public static setBody(collider: Collider, body: TypedBody | undefined) {
     collider.body = body;
   }
 
