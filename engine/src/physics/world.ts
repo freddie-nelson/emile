@@ -110,7 +110,6 @@ export class PhysicsWorld extends System {
 
       // if the body needs to be created, create it
       if (bodyNeedsCreated) {
-        console.log("Creating body for entity", entity);
         this.createBody(e);
       }
 
