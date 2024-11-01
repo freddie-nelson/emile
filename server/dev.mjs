@@ -1,5 +1,6 @@
 import Watcher from "watcher";
 import { spawn } from "child_process";
+import kill from "tree-kill";
 
 const watcher = new Watcher("../", {
   recursive: true,
@@ -75,8 +76,7 @@ const stop = async () => {
 
     p.stdout = null;
     p.stderr = null;
-    p.kill("SIGINT");
-    spawn("taskkill", ["/pid", p.pid, "/f", "/t"]);
+    kill(p.pid);
     killed = true;
   });
 
@@ -127,6 +127,6 @@ const restart = async () => {
     console.log(`[DEV] Received ${signal}, stopping server...`);
     await stop();
 
-    process.exit();
+    kill(process.pid);
   });
 });

@@ -227,16 +227,8 @@ export class Rigidbody extends Component {
       return;
     }
 
-    if (rigidbody.body.velocity.x !== rigidbody.velocity.x) {
-      rigidbody.velocity.x = rigidbody.body.velocity.x;
-    }
-
-    if (rigidbody.body.velocity.y !== rigidbody.velocity.y) {
-      rigidbody.velocity.y = rigidbody.body.velocity.y;
-    }
-
-    if (rigidbody.body.angularVelocity !== rigidbody.angularVelocity) {
-      rigidbody.angularVelocity = rigidbody.body.angularVelocity;
-    }
+    rigidbody.velocity.x = rigidbody.body.velocity.x;
+    rigidbody.velocity.y = rigidbody.body.velocity.y;
+    rigidbody.angularVelocity = rigidbody.body.angularVelocity;
   }
 }

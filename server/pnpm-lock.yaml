@@ -57,6 +57,9 @@ importers:
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
+      tree-kill:
+        specifier: ^1.2.2
+        version: 1.2.2
       tscpaths:
         specifier: ^0.0.9
         version: 0.0.9
@@ -1502,6 +1505,10 @@ packages:
     resolution: {integrity: sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==}
     engines: {node: '>=0.6'}
 
+  tree-kill@1.2.2:
+    resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
+    hasBin: true
+
   tscpaths@0.0.9:
     resolution: {integrity: sha512-tz4qimSJTCjYtHVsoY7pvxLcxhmhgmwzm7fyMEiL3/kPFFVyUuZOwuwcWwjkAsIrSUKJK22A7fNuJUwxzQ+H+w==}
     hasBin: true
@@ -2410,7 +2417,7 @@ snapshots:
       - supports-color
 
   fdir@6.4.2(picomatch@4.0.2):
-    dependencies:
+    optionalDependencies:
       picomatch: 4.0.2
 
   fill-range@4.0.0:
@@ -3202,6 +3209,8 @@ snapshots:
       safe-regex: 1.1.0
 
   toidentifier@1.0.1: {}
+
+  tree-kill@1.2.2: {}
 
   tscpaths@0.0.9:
     dependencies:

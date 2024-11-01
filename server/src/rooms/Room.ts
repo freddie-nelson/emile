@@ -25,7 +25,7 @@ import { ActionHandler } from "@/ActionHandler";
 export class DefaultRoom extends Room<State, RoomMetadata> {
   private static LOBBY_CHANNEL = "lobby";
   private static SIMULATION_INTERVAL = 1000 / 60;
-  private static PATCH_RATE = 1000 / 30;
+  private static PATCH_RATE = 1000 / 10;
 
   private game?: Game;
 

@@ -1,3 +1,4 @@
+import { Transform } from "@engine/src/core/transform";
 import { System, SystemType, SystemUpdateData } from "@engine/src/ecs/system";
 import { Vec2 } from "@engine/src/math/vec";
 import { Rigidbody } from "@engine/src/physics/rigidbody";
@@ -24,6 +25,9 @@ export class PlayerSystem extends System {
       if (Vec2.len(rigidbody.velocity) > MAX_PLAYER_SPEED) {
         rigidbody.velocity = Vec2.mul(Vec2.normalize(rigidbody.velocity), MAX_PLAYER_SPEED);
       }
+
+      // const t = registry.get(p.entity, Transform);
+      // console.log(id, t.position.x, t.position.y);
     }
   };
 }

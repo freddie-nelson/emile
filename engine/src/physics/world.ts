@@ -103,6 +103,8 @@ export class PhysicsWorld extends System {
         (collider && !Collider.getBody(collider)) ||
         !this.matterBodies.has(Rigidbody.getBody(rigidbody)!);
 
+      // TODO: body needs to be recreated if the collider type changes
+
       // if the body needs to be created and it already exists, remove it
       if (bodyNeedsCreated && this.bodies.has(entity)) {
         this.deleteBody(entity);
@@ -117,13 +119,8 @@ export class PhysicsWorld extends System {
       const transform = Entity.getComponent(e, Transform);
       const body = Rigidbody.getBody(rigidbody)!;
 
-      if (body.position.x !== transform.position.x || body.position.y !== transform.position.y) {
-        Matter.Body.setPosition(body, { x: transform.position.x, y: body.position.y });
-      }
-
-      if (body.angle !== transform.rotation) {
-        Matter.Body.setAngle(body, transform.rotation);
-      }
+      Matter.Body.setPosition(body, { x: transform.position.x, y: transform.position.y });
+      Matter.Body.setAngle(body, transform.rotation);
 
       const scale = this.bodyScale.get(entity)!;
       if (scale.x !== transform.scale.x || scale.y !== transform.scale.y) {
@@ -182,15 +179,12 @@ export class PhysicsWorld extends System {
       }
 
       const transform = Entity.getComponent(e, Transform);
-      if (transform.position.x !== body.position.x) {
-        transform.position.x = body.position.x;
-      }
-      if (transform.position.y !== body.position.y) {
-        transform.position.y = body.position.y;
-      }
-      if (transform.rotation !== body.angle) {
-        transform.rotation = body.angle;
-      }
+      // console.log("transform:", transform.position.x, transform.position.y);
+      // console.log("body:", body.position.x, body.position.y);
+
+      transform.position.x = body.position.x;
+      transform.position.y = body.position.y;
+      transform.rotation = body.angle;
     }
   };
 
