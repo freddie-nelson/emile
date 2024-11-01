@@ -74,6 +74,13 @@ export interface RendererOptions {
    * @default true
    */
   flipYAxis?: boolean;
+
+  /**
+   * Wether or not to enable the pixi dev tools.
+   *
+   * @default false
+   */
+  enablePixiDevTools?: boolean;
 }
 
 const defaultRendererOptions: Partial<RendererOptions> = {
@@ -85,6 +92,7 @@ const defaultRendererOptions: Partial<RendererOptions> = {
   backgroundColor: "black",
   scale: 50,
   flipYAxis: true,
+  enablePixiDevTools: false,
 };
 
 export interface SpriteCreatorData {
@@ -221,6 +229,12 @@ export class Renderer extends System {
 
     if (this.options.parentElement) {
       this.attach(this.options.parentElement);
+    }
+
+    if (this.options.enablePixiDevTools) {
+      (window as any).__PIXI_DEVTOOLS__ = {
+        app: this.app,
+      };
     }
   }
 
