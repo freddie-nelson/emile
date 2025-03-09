@@ -44,7 +44,9 @@ export function useGame(state: State | null, player?: Player, room?: Room<State>
 
     game.registry.addSystem(renderer);
 
-    game.registry.addSystem(new MoveSystem(player, room, () => (room ? ColyseusClient.getPing(room.id) : 0)));
+    game.registry.addSystem(
+      new MoveSystem(player, room, () => (room ? ColyseusClient.getPing(room.id) / 2 : 0))
+    );
 
     // initalise async engine dependencies
     new Promise<void>(async (resolve) => {
