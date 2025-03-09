@@ -14,13 +14,7 @@ import { zodErrorToUserFriendlyMessage } from "@shared/src/zod";
 import { EngineType } from "@engine/src/engine";
 import { sharedEngineOptions } from "@shared/src/engine";
 import { Logger } from "@shared/src/Logger";
-import { Transform } from "@engine/src/core/transform";
-import { Rigidbody } from "@engine/src/physics/rigidbody";
-import { CircleCollider } from "@engine/src/physics/collider";
-import { Vec2 } from "@engine/src/math/vec";
-import { Renderable } from "@engine/src/rendering/renderable";
 import Game from "@game/src/game";
-import { ActionType, MovePlayerData } from "@game/src/actions";
 import { ActionHandler } from "@/ActionHandler";
 
 export class DefaultRoom extends Room<State, RoomMetadata> {

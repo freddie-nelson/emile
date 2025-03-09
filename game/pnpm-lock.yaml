@@ -20,6 +20,9 @@ importers:
       pixi.js:
         specifier: 8.5.1
         version: 8.5.1
+      zod:
+        specifier: 3.23.8
+        version: 3.23.8
     devDependencies:
       '@types/matter-js':
         specifier: 0.19.7
@@ -267,6 +270,9 @@ packages:
       utf-8-validate:
         optional: true
 
+  zod@3.23.8:
+    resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
+
 snapshots:
 
   '@colyseus/schema@2.0.35': {}
@@ -437,3 +443,5 @@ snapshots:
   typescript@5.6.2: {}
 
   ws@8.18.0: {}
+
+  zod@3.23.8: {}

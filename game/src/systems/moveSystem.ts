@@ -1,11 +1,10 @@
 import { System, SystemType, SystemUpdateData } from "@engine/src/ecs/system";
 import { Keyboard } from "@engine/src/input/keyboard";
 import { Vec2 } from "@engine/src/math/vec";
-import { ClientToRoomMessage, GameActionMessage } from "@shared/src/room";
 import Player from "@state/src/Player";
 import { State } from "@state/src/state";
 import { Room } from "colyseus.js";
-import { ActionType, MovePlayerData } from "../actions";
+import { movePlayerAction } from "../actions/movePlayer";
 
 export class MoveSystem extends System {
   private readonly player: Player;
@@ -40,19 +39,11 @@ export class MoveSystem extends System {
     }
 
     if (dir.x !== 0 || dir.y !== 0) {
-      engine.actions.enqueue(
-        ActionType.MOVE_PLAYER,
-        {
-          player: this.player,
-          dir,
-        } satisfies MovePlayerData,
-        this.getActionDelay?.()
-      );
+      movePlayerAction.fire(engine, { player: this.player, dir }, this.getActionDelay?.());
 
-      this.room?.send(ClientToRoomMessage.GAME_ACTION, {
-        action: ActionType.MOVE_PLAYER,
-        data: { x: dir.x, y: dir.y },
-      } satisfies GameActionMessage);
+      if (this.room) {
+        movePlayerAction.fireServer(this.room!, { x: dir.x, y: dir.y });
+      }
     }
   };
 }

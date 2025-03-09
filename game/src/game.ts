@@ -1,16 +1,19 @@
 import Engine, { EngineOptions } from "@engine/src/engine";
-import { ActionType, movePlayerAction, movePlayerActionValidator } from "./actions";
+import { GameActionStore } from "./actions/actions";
 import { PlayerSystem } from "./systems/playerSystem";
 import Player from "@state/src/Player";
 import { Vec2 } from "@engine/src/math/vec";
 import { Rigidbody } from "@engine/src/physics/rigidbody";
-import { CircleCollider, RectangleCollider } from "@engine/src/physics/collider";
+import { RectangleCollider } from "@engine/src/physics/collider";
 import { Renderable } from "@engine/src/rendering/renderable";
 import { Transform } from "@engine/src/core/transform";
+import { actions } from "./actions/actionsList";
 
 export default class Game {
   private readonly options: EngineOptions;
   private _engine: Engine;
+
+  public readonly actionStore: GameActionStore;
 
   constructor(options: EngineOptions) {
     const autoStart = options.autoStart;
@@ -21,6 +24,8 @@ export default class Game {
     this.options = options;
     this._engine = new Engine(options);
 
+    this.actionStore = new GameActionStore(this._engine.actions);
+
     if (autoStart) {
       this.start();
     }
@@ -30,9 +35,10 @@ export default class Game {
    * Initialises the game and starts the engine/game.
    */
   public start() {
-    // initialise game here
-    this._engine.actions.register(ActionType.MOVE_PLAYER, movePlayerAction, movePlayerActionValidator);
+    // register actions
+    this.registerActions();
 
+    // initialise game here
     this.registry.addSystem(new PlayerSystem(this.options.state.players));
 
     // start engine
@@ -104,5 +110,20 @@ export default class Game {
 
   public get actions() {
     return this._engine.actions;
+  }
+
+  // private
+
+  /**
+   * Registers all actions in the `actions` array exported from `actionsList.ts`.
+   *
+   * You probably don't need modify this method.
+   */
+  private registerActions() {
+    for (const action of actions) {
+      if (!action.engineType || action.engineType === this._engine.type) {
+        this.actionStore.register(action);
+      }
+    }
   }
 }

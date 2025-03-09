@@ -1,4 +1,4 @@
-import { ActionType } from "@game/src/actions";
+import { ActionType } from "@game/src/actions/actionType";
 import { z } from "zod";
 
 export type RoomName = "room";

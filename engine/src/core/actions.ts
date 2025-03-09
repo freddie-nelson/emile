@@ -1,7 +1,5 @@
 import Engine from "../engine";
 
-export type ActionType = any;
-
 export type ActionHandler<A, T> = (engine: Engine, action: A, data: T, dt: number) => void;
 
 export type ActionDataValidator<A> = (action: A, data: any) => boolean;
@@ -13,7 +11,6 @@ export interface Action<A> {
 
 export class ActionsManager<T> {
   private readonly handlers: Map<T, ActionHandler<T, any>> = new Map();
-  private readonly validators: Map<T, ActionDataValidator<T>> = new Map();
   private readonly actionQueue: Action<T>[] = [];
 
   /**
@@ -65,11 +62,6 @@ export class ActionsManager<T> {
       return;
     }
 
-    const validator = this.validators.get(action);
-    if (!validator || !validator(action, data)) {
-      return;
-    }
-
     handler(engine, action, data, dt);
   }
 
@@ -80,11 +72,9 @@ export class ActionsManager<T> {
    *
    * @param action The action to register the handler for.
    * @param handler The handler for the action.
-   * @param validator The validator for the action data.
    */
-  public register<D>(action: T, handler: ActionHandler<T, D>, validator: ActionDataValidator<T>) {
+  public register<D>(action: T, handler: ActionHandler<T, D>) {
     this.handlers.set(action, handler);
-    this.validators.set(action, validator);
   }
 
   /**
@@ -94,6 +84,12 @@ export class ActionsManager<T> {
    */
   public unregister(action: T) {
     this.handlers.delete(action);
-    this.validators.delete(action);
+  }
+
+  /**
+   * Clears all handlers from the manager.
+   */
+  public clear() {
+    this.handlers.clear();
   }
 }

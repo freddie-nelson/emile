@@ -1,37 +1,27 @@
-import { Vec2 } from "@engine/src/math/vec";
-import { ActionType, MovePlayerData } from "@game/src/actions";
+import { ActionType } from "@game/src/actions/actionType";
 import Game from "@game/src/game";
 import { Logger } from "@shared/src/Logger";
 import Player from "@state/src/Player";
-import { z } from "zod";
-
-export const movePlayerSchema = z.object({
-  x: z.number().min(-1).max(1),
-  y: z.number().min(-1).max(1),
-});
 
 export class ActionHandler {
-  static handleAction(game: Game, player: Player, action: ActionType, data: any) {
-    switch (action) {
-      case ActionType.MOVE_PLAYER:
-        this.handleMovePlayer(game, player, data);
-        break;
-
-      default:
-        Logger.errorAndThrow("ACTIONHANDLER", `Unsupported action type '${action}'`);
-        break;
+  static handleAction(game: Game, player: Player, type: ActionType, data: any) {
+    const action = game.actionStore.get(type);
+    if (!action) {
+      Logger.errorAndThrow("ACTIONHANDLER", `No action found for type '${type}'`);
+      return;
     }
-  }
 
-  static handleMovePlayer(game: Game, player: Player, d: any) {
-    const { success, data } = movePlayerSchema.safeParse(d);
+    const schema = action.clientToServerMessageSchema;
+    if (!schema) {
+      Logger.errorAndThrow("ACTIONHANDLER", `No schema found for action type '${type}'`);
+      return;
+    }
+
+    const { success, data: parsedData } = schema.safeParse(data);
     if (!success) {
       return;
     }
 
-    game.actions.enqueue(ActionType.MOVE_PLAYER, {
-      player: player,
-      dir: new Vec2(data.x, data.y),
-    } satisfies MovePlayerData);
+    game.actions.enqueue(type, action.serverMessageToActionData?.(parsedData, player, game) ?? parsedData);
   }
 }
