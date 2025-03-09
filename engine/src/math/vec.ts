@@ -41,6 +41,10 @@ export class Vec2 extends Schema {
     }
   }
 
+  public static fromAngle(angle: number): Vec2 {
+    return new Vec2(Math.cos(angle), Math.sin(angle));
+  }
+
   public static set(v: Vec2, x: number, y: number): void {
     v.x = x;
     v.y = y;
@@ -87,7 +91,7 @@ export class Vec2 extends Schema {
   }
 
   public static angle(v: Vec2): number {
-    return Math.atan2(v.y, v.x);
+    return (Math.atan2(v.y, v.x) + 2 * Math.PI) % (2 * Math.PI);
   }
 
   public static rotate(v: Vec2, angle: number): Vec2 {
@@ -118,6 +122,10 @@ export class Vec2 extends Schema {
 
   public static copy(v: Vec2): Vec2 {
     return new Vec2(v.x, v.y);
+  }
+
+  public static lerp(a: Vec2, b: Vec2, alpha: number): Vec2 {
+    return Vec2.add(a, Vec2.mul(Vec2.sub(b, a), alpha));
   }
 
   public static equals(v: Vec2, vec: Vec2): boolean {

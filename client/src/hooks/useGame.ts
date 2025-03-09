@@ -37,7 +37,7 @@ export function useGame(state: State | null, player?: Player, room?: Room<State>
       autoSize: true,
       backgroundColor: 0x000000,
     });
-    renderer.registerSpriteCreator(new PhysicsEntitySpriteCreator(0xff0000));
+    renderer.registerSpriteCreator(new PhysicsEntitySpriteCreator(0xff0000, 1));
     renderer.camera.zoom = 0.5;
 
     setRenderer(renderer);

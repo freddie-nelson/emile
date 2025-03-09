@@ -15,6 +15,9 @@ export enum ColliderEvent {
   COLLISION_START,
   COLLISION_ACTIVE,
   COLLISION_END,
+  COLLISION_START_INSTANT,
+  COLLISION_ACTIVE_INSTANT,
+  COLLISION_END_INSTANT,
 }
 
 /**
@@ -47,9 +50,9 @@ export abstract class Collider extends Component {
 
   @type("int8") public type: ColliderType;
   @type("boolean") public isSensor: boolean = false;
-  @type("int32") public group: number = 1;
+  @type("int32") public group: number = 0;
   @type("uint32") public category: number = 1;
-  @type("int32") public mask: number = 1;
+  @type("int32") public mask: number = 4294967295;
 
   /**
    * The matter body of the collider.

@@ -1,21 +1,47 @@
 import { ContainerChild } from "pixi.js";
 import { Vec2 } from "../math/vec";
 
-export class Camera {
-  public readonly worldCentre: Vec2;
-  public zoom: number;
-  public target: ContainerChild | null = null;
+export interface CameraOptions {
+  worldCentre?: Vec2;
+  zoom?: number;
+  target?: ContainerChild | Vec2 | null;
+  smoothing?: number;
+}
 
-  constructor(worldCentre = new Vec2(), zoom = 1) {
-    this.worldCentre = worldCentre;
-    this.zoom = zoom;
+const defaultCameraOptions: CameraOptions = {
+  worldCentre: new Vec2(0, 0),
+  zoom: 1,
+  target: null,
+  smoothing: 0.1,
+};
+
+export class Camera {
+  public readonly options: Required<CameraOptions>;
+
+  constructor(options: Partial<CameraOptions> = {}) {
+    this.options = { ...defaultCameraOptions, ...options } as Required<CameraOptions>;
   }
 
   public update(dt: number) {
-    if (this.target) {
-      const targetPos = this.target.getGlobalPosition();
-      this.worldCentre.x = targetPos.x;
-      this.worldCentre.y = targetPos.y;
+    if (this.options.target) {
+      let targetPos =
+        this.options.target instanceof Vec2
+          ? this.options.target
+          : new Vec2(this.options.target.x, this.options.target.y);
+
+      this.options.worldCentre = Vec2.lerp(
+        this.options.worldCentre,
+        new Vec2(targetPos.x, targetPos.y),
+        this.options.smoothing
+      );
     }
+  }
+
+  public set zoom(zoom: number) {
+    this.options.zoom = zoom;
+  }
+
+  public get zoom() {
+    return this.options.zoom;
   }
 }

@@ -205,11 +205,11 @@ export class Registry {
       Logger.errorAndThrow("Registry", `Entity with id '${id}' not found in registry.`);
     }
 
-    this.entities.delete(id);
-
     if (this.type === RegistryType.SERVER) {
       this.onEntityDestroyed(this.entities.get(id)!);
     }
+
+    this.entities.delete(id);
   }
 
   /**
@@ -489,7 +489,7 @@ export class Registry {
 
   private deleteEntityFromEntityMaps(entity: Entity) {
     for (const query of this.entityQueries) {
-      this.queryEntities.get(Registry.getEntityQueryKey(query))!.delete(entity.id);
+      this.queryEntities.get(Registry.getEntityQueryKey(query))?.delete(entity.id);
     }
   }
 

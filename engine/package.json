@@ -10,13 +10,13 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/matter-js": "^0.19.7",
-    "tsx": "^4.19.1",
-    "typescript": "^5.6.2"
+    "@types/matter-js": "0.19.7",
+    "tsx": "4.19.1",
+    "typescript": "5.6.2"
   },
   "dependencies": {
-    "@colyseus/schema": "^2.0.35",
-    "matter-js": "^0.20.0",
-    "pixi.js": "^8.5.1"
+    "@colyseus/schema": "2.0.35",
+    "matter-js": "0.20.0",
+    "pixi.js": "8.5.1"
   }
 }
