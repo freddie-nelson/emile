@@ -125,11 +125,6 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
     }
 
     this.setStarted(true);
-
-    // create players
-    for (const p of this.state.players.values()) {
-      this.game?.createPlayer(p);
-    }
   }
 
   private getPlayer(sessionId: string) {

@@ -1,4 +1,4 @@
-import Engine, { EngineOptions } from "@engine/src/engine";
+import Engine, { EngineOptions, EngineType } from "@engine/src/engine";
 import { GameActionStore } from "./actions/actions";
 import { PlayerSystem } from "./systems/playerSystem";
 import Player from "@state/src/Player";
@@ -8,6 +8,7 @@ import { RectangleCollider } from "@engine/src/physics/collider";
 import { Renderable } from "@engine/src/rendering/renderable";
 import { Transform } from "@engine/src/core/transform";
 import { actions } from "./actions/actionsList";
+import { State } from "@state/src/state";
 
 export default class Game {
   private readonly options: EngineOptions;
@@ -40,6 +41,14 @@ export default class Game {
 
     // initialise game here
     this.registry.addSystem(new PlayerSystem(this.options.state.players));
+
+    // only create/modify entities on the server
+    if (this.options.type === EngineType.SERVER) {
+      // create players
+      for (const player of this.options.state.players.values()) {
+        this.createPlayer(player);
+      }
+    }
 
     // start engine
     this._engine.start();
