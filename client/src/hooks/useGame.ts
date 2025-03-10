@@ -1,16 +1,10 @@
-import { MoveSystem } from "@game/src/systems/moveSystem";
-import { EngineType } from "@engine/src/engine";
-import { Keyboard } from "@engine/src/input/keyboard";
-import { Mouse } from "@engine/src/input/mouse";
 import { Renderer } from "@engine/src/rendering/renderer";
-import PhysicsEntitySpriteCreator from "@engine/src/rendering/sprite-creators/physics-entity-sprite-creator";
 import Game from "@game/src/game";
-import { sharedEngineOptions } from "@shared/src/engine";
 import Player from "@state/src/Player";
 import { State } from "@state/src/state";
 import { Room } from "colyseus.js";
 import { useEffect, useState } from "react";
-import { ColyseusClient } from "@/api/colyseus";
+import setupGame from "@/game/setup";
 
 export function useGame(state: State | null, player?: Player, room?: Room<State>) {
   const [game, setGame] = useState<Game | null>(null);
@@ -18,52 +12,24 @@ export function useGame(state: State | null, player?: Player, room?: Room<State>
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (!state || !player) {
+    if (!state || !player || !room) {
       return;
     }
 
     setIsReady(false);
 
-    const game = new Game({
-      ...sharedEngineOptions,
-      type: EngineType.CLIENT,
-      state: state,
-      autoStart: true,
-    });
-    setGame(game);
+    (async () => {
+      try {
+        const { game, renderer } = await setupGame(state, player, room);
+        setGame(game);
+        setRenderer(renderer);
 
-    const renderer = new Renderer({
-      autoInit: false,
-      autoSize: true,
-      backgroundColor: 0x000000,
-    });
-    renderer.registerSpriteCreator(new PhysicsEntitySpriteCreator(0xff0000, 1));
-    renderer.camera.zoom = 0.5;
-
-    setRenderer(renderer);
-
-    game.registry.addSystem(renderer);
-
-    game.registry.addSystem(
-      new MoveSystem(player, room, () => (room ? ColyseusClient.getPing(room.id) / 2 : 0))
-    );
-
-    // initalise async engine dependencies
-    new Promise<void>(async (resolve) => {
-      Keyboard.enable();
-      Mouse.enable();
-
-      await renderer.init();
-
-      resolve();
-    })
-      .then(() => {
         setIsReady(true);
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error(error);
-        alert(`An error occurred while starting the game: ${error.message}`);
-      });
+        alert(`An error occurred while starting the game: ${String(error)}`);
+      }
+    })();
 
     return () => {
       setIsReady(false);
