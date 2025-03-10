@@ -50,8 +50,8 @@ async function searchDir(dir) {
 
 await searchDir(".");
 
-const engineIds = componentIds.filter((id) => id >= engineIdStart);
-const userIds = componentIds.filter((id) => id < engineIdStart);
+const engineIds = componentIds.filter((id) => id >= engineIdStart).sort((a, b) => a - b);
+const userIds = componentIds.filter((id) => id < engineIdStart).sort((a, b) => a - b);
 
 const nextEngineId = engineIds.length === 0 ? engineIdStart : Math.max(...engineIds) + 1;
 const nextUserId = userIds.length === 0 ? 0 : Math.max(...userIds) + 1;
