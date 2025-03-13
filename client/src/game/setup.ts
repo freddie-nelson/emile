@@ -3,7 +3,8 @@ import { EngineType } from "@engine/src/engine";
 import { Keyboard } from "@engine/src/input/keyboard";
 import { Mouse } from "@engine/src/input/mouse";
 import { Renderer } from "@engine/src/rendering/renderer";
-import PhysicsEntitySpriteCreator from "@engine/src/rendering/sprite-creators/physics-entity-sprite-creator";
+import ParticleSpriteCreator from "@engine/src/rendering/sprite-creators/ParticleSpriteCreator";
+import PhysicsEntitySpriteCreator from "@engine/src/rendering/sprite-creators/PhysicsEntitySpriteCreator";
 import Game from "@game/src/game";
 import { MoveSystem } from "@game/src/systems/moveSystem";
 import { sharedEngineOptions } from "@shared/src/engine";
@@ -32,7 +33,7 @@ export default async function setupGame(
     autoSize: true,
     backgroundColor: 0x000000,
   });
-  renderer.camera.zoom = 0.5;
+  renderer.camera.zoom = 0.7;
 
   // setup sprite creators
 
@@ -49,6 +50,7 @@ export default async function setupGame(
   //   renderer.registerSpriteCreator(new SpriteSpriteCreator());
 
   renderer.registerSpriteCreator(new PhysicsEntitySpriteCreator(0xff0000, 1));
+  renderer.registerSpriteCreator(new ParticleSpriteCreator());
 
   // add renderer
   game.registry.addSystem(renderer);

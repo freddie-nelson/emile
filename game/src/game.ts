@@ -8,7 +8,8 @@ import { RectangleCollider } from "@engine/src/physics/collider";
 import { Renderable } from "@engine/src/rendering/renderable";
 import { Transform } from "@engine/src/core/transform";
 import { actions } from "./actions/actionsList";
-import { State } from "@state/src/state";
+import { ParticleEmitter, ParticleEmitterColorStop } from "@engine/src/rendering/particles/emitter";
+import { ColorTag } from "@engine/src/rendering/colorTag";
 
 export default class Game {
   private readonly options: EngineOptions;
@@ -42,7 +43,7 @@ export default class Game {
     // initialise game here
     this.registry.addSystem(new PlayerSystem(this.options.state.players));
 
-    // only create/modify entities on the server
+    // only create/modify entities on the server (EXTREMELY IMPORTANT TO REMEMBER)
     if (this.options.type === EngineType.SERVER) {
       // create players
       for (const player of this.options.state.players.values()) {
@@ -97,10 +98,22 @@ export default class Game {
     registry.add(playerEntity, new Rigidbody());
     registry.add(playerEntity, new RectangleCollider(1.5, 1.5));
     registry.add(playerEntity, new Renderable());
+    registry.add(playerEntity, new ColorTag(0xffffff));
 
     const rigidbody = registry.get(playerEntity, Rigidbody);
     rigidbody.frictionAir = 0.05;
     rigidbody.friction = 0.05;
+
+    const emitter = registry.add(playerEntity, new ParticleEmitter());
+    emitter.particleRotateSpeed = Math.PI * 2;
+    emitter.particleStartColor = 0xf018af;
+    emitter.particleColorStops.push(new ParticleEmitterColorStop(1, 0xffffff, 0.2));
+    emitter.particleLifetimeMs = 2000;
+    emitter.particleEmitRatePerSecond = 30;
+    emitter.particleStartSize = 0.3;
+    emitter.particleStartSizeVariance = 0.1;
+    emitter.particleEndSize = 0;
+    emitter.particleStartSizeInterpolationT = 0.7;
 
     player.entity = playerEntity;
 

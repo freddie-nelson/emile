@@ -5,14 +5,14 @@ import { CircleCollider, ColliderType, PolygonCollider, RectangleCollider } from
 import { PhysicsWorld } from "../../physics/world";
 import { Transform } from "../../core/transform";
 import { Logger } from "@shared/src/Logger";
-import { Entity } from "../../ecs/entity";
+import { Entity, EntityQuery } from "../../ecs/entity";
 import { ColorTag } from "../colorTag";
 import { Vec2 } from "../../math/vec";
 import { lerp } from "../../math/lerp";
 import { CLIENT_LERP_RATE } from "../../engine";
 
 export default class PhysicsEntitySpriteCreator implements SpriteCreator {
-  public readonly query = new Set([Transform, Rigidbody]);
+  public readonly query: EntityQuery = new Set([Transform, Rigidbody]);
 
   private readonly defaultColor: ColorSource;
   private readonly defaultOpacity: number;
