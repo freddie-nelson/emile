@@ -4,7 +4,7 @@ import { ParticleEmitter, ParticleType } from "../particles/emitter";
 import { Vec2 } from "../../math/vec";
 import { SpriteCreatorCreate, SpriteCreatorDelete, SpriteCreatorUpdate } from "../renderer";
 import { Container, Graphics, Sprite, Texture, TextureSource } from "pixi.js";
-import { CLIENT_LERP_RATE } from "../../engine";
+import Engine, { CLIENT_LERP_RATE } from "../../engine";
 import { lerp, lerpColor } from "../../math/lerp";
 import vary from "../../math/vary";
 import { map, max } from "../../math/clamp";
@@ -85,7 +85,7 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     return c;
   };
 
-  public readonly update: SpriteCreatorUpdate = ({ registry, entity, sprite, dt }) => {
+  public readonly update: SpriteCreatorUpdate = ({ engine, registry, entity, sprite, dt }) => {
     const e = registry.get(entity);
     const c = sprite! as Container;
 
@@ -99,7 +99,7 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     c.scale.set(transform.scale.x, transform.scale.y);
     c.zIndex = transform.zIndex;
 
-    this.updateEmitter(entity, dt);
+    this.updateEmitter(entity, dt, engine);
   };
 
   public readonly delete: SpriteCreatorDelete = ({ registry, app, entity, sprite }) => {
@@ -109,11 +109,12 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     this.emitters.delete(entity);
   };
 
-  private updateEmitter(entity: string, dt: number) {
+  private updateEmitter(entity: string, dt: number, engine: Engine) {
     const state = this.emitters.get(entity)!;
     const { emitter, container, particles } = state;
 
     const dtMs = Math.floor(dt * 1000);
+    const gravity = engine.physics.getGravity();
 
     for (const particle of particles) {
       if (particle.life <= 0) {
@@ -122,7 +123,7 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
         continue;
       }
 
-      this.updateParticle(emitter, particle, dt, dtMs);
+      this.updateParticle(emitter, particle, Vec2.mul(gravity, emitter.gravityScale), dt, dtMs);
     }
 
     if (!emitter.enabled) {
@@ -142,7 +143,8 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     state.emitTimer -= dtMs;
     state.emitBudget += dtMs;
 
-    if (state.emitThisInterval <= 0) {
+    // check if we can emit new particles
+    if (state.emitThisInterval <= 0 || particles.size >= emitter.maxParticles) {
       return;
     }
 
@@ -151,7 +153,7 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
       return Logger.errorAndThrow("RENDERER", "Particle texture not found.");
     }
 
-    while (state.emitBudget >= state.emitEveryMs) {
+    while (state.emitBudget >= state.emitEveryMs && particles.size < emitter.maxParticles) {
       state.emitBudget -= state.emitEveryMs;
 
       const p = this.createParticle(emitter, texture);
@@ -275,7 +277,13 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     };
   }
 
-  private updateParticle(emitter: ParticleEmitter, particle: ParticleState, dt: number, dtMs: number) {
+  private updateParticle(
+    emitter: ParticleEmitter,
+    particle: ParticleState,
+    gravity: Vec2,
+    dt: number,
+    dtMs: number
+  ) {
     // decrement lifetime
     particle.life -= dtMs;
 
@@ -302,8 +310,8 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
       particle.particle.scale.x += particle.scaleRate.y * dt;
     }
 
-    particle.speed.x += particle.acceleration.x * dt;
-    particle.speed.y += particle.acceleration.y * dt;
+    particle.speed.x += (particle.acceleration.x + gravity.x) * dt;
+    particle.speed.y += (particle.acceleration.y + gravity.y) * dt;
 
     particle.rotateSpeed += particle.rotationAcceleration * dt;
 
