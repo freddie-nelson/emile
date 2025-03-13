@@ -7,7 +7,7 @@ import { Container, Graphics, Sprite, Texture, TextureSource } from "pixi.js";
 import Engine, { CLIENT_LERP_RATE } from "../../engine";
 import { lerp, lerpColor } from "../../math/lerp";
 import vary from "../../math/vary";
-import { map, max } from "../../math/clamp";
+import { map, max, min } from "../../math/clamp";
 import SpriteSpriteCreator, { SpriteImage } from "./SpriteSpriteCreator";
 import { Logger } from "@shared/src/Logger";
 import { graphicsToTexture } from "../helpers/texture";
@@ -141,7 +141,7 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     }
 
     state.emitTimer -= dtMs;
-    state.emitBudget += dtMs;
+    state.emitBudget += min(dtMs, 1000);
 
     // check if we can emit new particles
     if (state.emitThisInterval <= 0 || particles.size >= emitter.maxParticles) {
