@@ -7,4 +7,7 @@
  */
 export enum ActionType {
   MOVE_PLAYER,
+  ROTATE_PLAYER,
+  SCALE_PLAYER,
+  // ...
 }

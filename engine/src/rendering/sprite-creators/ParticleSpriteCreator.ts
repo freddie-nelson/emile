@@ -8,7 +8,7 @@ import Engine, { CLIENT_LERP_RATE } from "../../engine";
 import { lerp, lerpColor } from "../../math/lerp";
 import vary from "../../math/vary";
 import { map, max, min } from "../../math/clamp";
-import SpriteSpriteCreator, { SpriteImage } from "./SpriteSpriteCreator";
+import SpriteSpriteCreator, { SpriteImage } from "./spriteSpriteCreator";
 import { Logger } from "@shared/src/Logger";
 import { graphicsToTexture } from "../helpers/texture";
 import { Registry } from "../../ecs/registry";
@@ -53,7 +53,7 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     this.query = new Set([Transform, ParticleEmitter]) as EntityQuery;
   }
 
-  public readonly create: SpriteCreatorCreate = ({ registry, world, entity, app }) => {
+  public readonly create: SpriteCreatorCreate = ({ registry, world, sceneGraph, entity, app }) => {
     if (!this.squareTexture) {
       this.squareTexture = graphicsToTexture(app.renderer, new Graphics().rect(0, 0, 20, 20).fill(0xffffff));
       this.circleTexture = graphicsToTexture(app.renderer, new Graphics().circle(0, 0, 10).fill(0xffffff));
@@ -61,7 +61,7 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
 
     const e = registry.get(entity);
 
-    const transform = Entity.getComponent(e, Transform);
+    const transform = sceneGraph.getWorldTransform(entity);
     const emitter = Entity.getComponent(e, ParticleEmitter);
 
     const c = new Container();
@@ -85,11 +85,11 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     return c;
   };
 
-  public readonly update: SpriteCreatorUpdate = ({ engine, registry, entity, sprite, dt }) => {
+  public readonly update: SpriteCreatorUpdate = ({ engine, registry, sceneGraph, entity, sprite, dt }) => {
     const e = registry.get(entity);
     const c = sprite! as Container;
 
-    const transform = Entity.getComponent(e, Transform);
+    const transform = sceneGraph.getWorldTransform(entity);
     const emitter = Entity.getComponent(e, ParticleEmitter);
 
     const position = Vec2.lerp(new Vec2(c.position.x, c.position.y), transform.position, CLIENT_LERP_RATE);

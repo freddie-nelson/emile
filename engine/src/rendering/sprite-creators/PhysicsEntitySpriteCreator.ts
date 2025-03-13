@@ -1,4 +1,4 @@
-import { Color, ColorSource, ContainerChild, Graphics } from "pixi.js";
+import { Color, ColorSource, Container, ContainerChild, Graphics } from "pixi.js";
 import { SpriteCreator, SpriteCreatorCreate, SpriteCreatorDelete, SpriteCreatorUpdate } from "../renderer";
 import { Rigidbody } from "../../physics/rigidbody";
 import { CircleCollider, ColliderType, PolygonCollider, RectangleCollider } from "../../physics/collider";
@@ -13,6 +13,7 @@ import { CLIENT_LERP_RATE } from "../../engine";
 
 export default class PhysicsEntitySpriteCreator implements SpriteCreator {
   public readonly query: EntityQuery = new Set([Transform, Rigidbody]);
+  private readonly oldScales: Map<string, Vec2> = new Map();
 
   private readonly defaultColor: ColorSource;
   private readonly defaultOpacity: number;
@@ -34,45 +35,44 @@ export default class PhysicsEntitySpriteCreator implements SpriteCreator {
     this.rigidbodyOpacity = rigidbodyOpacity;
   }
 
-  public readonly create: SpriteCreatorCreate = ({ registry, world, entity }) => {
+  public readonly create: SpriteCreatorCreate = ({ registry, sceneGraph, world, entity }) => {
     const e = registry.get(entity);
 
-    const transform = Entity.getComponent(e, Transform);
+    const transform = sceneGraph.getWorldTransform(entity);
     const collider = PhysicsWorld.getCollider(e);
     const colorTag = Entity.getComponentOrNull(e, ColorTag);
 
     const s = new Graphics();
     world.addChild(s);
 
-    const position = Vec2.lerp(new Vec2(s.position.x, s.position.y), transform.position, 0.2);
-    s.position.set(position.x, position.y);
+    s.position.set(transform.position.x, transform.position.y);
 
     s.rotation = transform.rotation;
-    s.scale.set(transform.scale.x, transform.scale.y);
     s.zIndex = this.zIndex ?? transform.zIndex;
+
+    this.oldScales.set(entity, Vec2.copy(transform.scale));
 
     if (!collider) {
       s.circle(0, 0, this.rigidbodyRadius);
       s.alpha = this.rigidbodyOpacity;
       s.fill(colorTag?.color || this.defaultColor);
-      s.pivot.set(0, 0);
       return s;
     }
 
     switch (collider.type) {
       case ColliderType.CIRCLE: {
         const circle = collider as CircleCollider;
-        s.circle(0, 0, circle.radius);
+        s.ellipse(0, 0, circle.radius * transform.scale.x, circle.radius * transform.scale.y);
         break;
       }
       case ColliderType.RECTANGLE: {
         const rect = collider as RectangleCollider;
-        s.rect(0, 0, rect.width, rect.height);
+        s.rect(0, 0, rect.width * transform.scale.x, rect.height * transform.scale.y);
         break;
       }
       case ColliderType.POLYGON: {
         const poly = collider as PolygonCollider;
-        s.poly(poly.vertices);
+        s.poly(poly.vertices.map((v) => ({ x: v.x * transform.scale.x, y: v.y * transform.scale.y })));
         break;
       }
       default: {
@@ -91,26 +91,36 @@ export default class PhysicsEntitySpriteCreator implements SpriteCreator {
     return s;
   };
 
-  public readonly update: SpriteCreatorUpdate = ({ registry, app, entity, sprite, dt }) => {
+  public readonly update: SpriteCreatorUpdate = (data) => {
+    const { registry, sceneGraph, entity, sprite } = data;
+
     const e = registry.get(entity);
     const s = sprite!;
 
     const collider = PhysicsWorld.getCollider(e);
-    const transform = Entity.getComponent(e, Transform);
+    const transform = sceneGraph.getWorldTransform(entity);
+
+    const oldScale = this.oldScales.get(entity)!;
+    if (oldScale.x !== transform.scale.x || oldScale.y !== transform.scale.y) {
+      return this.create(data);
+    }
 
     const position = Vec2.lerp(new Vec2(s.position.x, s.position.y), transform.position, CLIENT_LERP_RATE);
     s.position.set(position.x, position.y);
 
     s.rotation = lerp(s.rotation, transform.rotation, CLIENT_LERP_RATE);
-    s.scale.set(transform.scale.x, transform.scale.y);
     s.zIndex = this.zIndex ?? transform.zIndex;
 
     this.setPivot(s, collider?.type);
   };
 
-  public readonly delete: SpriteCreatorDelete = ({ registry, app, entity, sprite }) => {
+  public readonly delete: SpriteCreatorDelete = ({ registry, app, entity, sprite }, replacing) => {
     sprite!.removeFromParent();
     sprite!.destroy();
+
+    if (!replacing) {
+      this.oldScales.delete(entity);
+    }
   };
 
   private setPivot(s: ContainerChild, colliderType?: ColliderType) {

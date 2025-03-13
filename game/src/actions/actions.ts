@@ -110,6 +110,13 @@ export class GameActionStore {
    * @param action The action to register
    */
   register(action: Action<any, any>) {
+    if (this.actions.has(action.type)) {
+      Logger.warn(
+        "ACTION",
+        `Action with type '${action.type}' already exists, unregistering old action. Are you sure this is what you intended?`
+      );
+    }
+
     this.actions.set(action.type, action);
     this.actionsManager.register(action.type, action.handler);
   }

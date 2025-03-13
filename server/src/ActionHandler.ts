@@ -1,6 +1,7 @@
 import { ActionType } from "@game/src/actions/actionType";
 import Game from "@game/src/game";
 import { Logger } from "@shared/src/Logger";
+import { zodErrorToUserFriendlyMessage } from "@shared/src/zod";
 import Player from "@state/src/Player";
 
 export class ActionHandler {
@@ -17,8 +18,13 @@ export class ActionHandler {
       return;
     }
 
-    const { success, data: parsedData } = schema.safeParse(data);
+    const { success, error, data: parsedData } = schema.safeParse(data);
     if (!success) {
+      Logger.warn(
+        "ACTIONHANDLER",
+        `Failed to parse data for action type '${type}'. Error: ${zodErrorToUserFriendlyMessage(error)}`
+      );
+      Logger.warn("ACTIONHANDLER", JSON.stringify(data, null, 2));
       return;
     }
 

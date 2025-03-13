@@ -6,21 +6,22 @@ import { Logger } from "@shared/src/Logger";
 import { ActionsManager } from "./core/actions";
 import { Keyboard } from "./input/keyboard";
 import { Mouse } from "./input/mouse";
+import SceneGraph from "./scene/sceneGraph";
 
 export enum EngineType {
-	SERVER,
-	CLIENT,
+  SERVER,
+  CLIENT,
 }
 
 export function engineTypeToRegistryType(type: EngineType): RegistryType {
-	switch (type) {
-		case EngineType.CLIENT:
-			return RegistryType.CLIENT;
-		case EngineType.SERVER:
-			return RegistryType.SERVER;
-		default:
-			throw new Error(`Unknown engine type: ${type}`);
-	}
+  switch (type) {
+    case EngineType.CLIENT:
+      return RegistryType.CLIENT;
+    case EngineType.SERVER:
+      return RegistryType.SERVER;
+    default:
+      throw new Error(`Unknown engine type: ${type}`);
+  }
 }
 
 export type UpdateCallback = (dt: number) => void;
@@ -33,12 +34,12 @@ export type UpdateCallback = (dt: number) => void;
  * A post update callback is called after the update loop. This will be after all the registry systems have been updated.
  */
 export enum UpdateCallbackType {
-	PRE_UPDATE,
-	POST_UPDATE,
-	PRE_FIXED_UPDATE,
-	POST_FIXED_UPDATE,
-	PRE_STATE_UPDATE,
-	POST_STATE_UPDATE,
+  PRE_UPDATE,
+  POST_UPDATE,
+  PRE_FIXED_UPDATE,
+  POST_FIXED_UPDATE,
+  PRE_STATE_UPDATE,
+  POST_STATE_UPDATE,
 }
 
 export const CLIENT_LERP_RATE = 0.4;
@@ -47,78 +48,78 @@ export const CLIENT_LERP_RATE = 0.4;
  * The options for the engine.
  */
 export interface EngineOptions {
-	/**
-	 * The type of the engine.
-	 */
-	type: EngineType;
+  /**
+   * The type of the engine.
+   */
+  type: EngineType;
 
-	/**
-	 * The state to use for the engine.
-	 */
-	state: State;
+  /**
+   * The state to use for the engine.
+   */
+  state: State;
 
-	/**
-	 * Wether or not to start the engine automatically.
-	 *
-	 * @default false
-	 */
-	autoStart?: boolean;
+  /**
+   * Wether or not to start the engine automatically.
+   *
+   * @default false
+   */
+  autoStart?: boolean;
 
-	/**
-	 * Wether or not to automatically update the engine.
-	 *
-	 * If this is true, the engine will not automatically call the update loop. This is useful if you want to manually call the update loop.
-	 *
-	 * @default false
-	 */
-	manualUpdate?: boolean;
+  /**
+   * Wether or not to automatically update the engine.
+   *
+   * If this is true, the engine will not automatically call the update loop. This is useful if you want to manually call the update loop.
+   *
+   * @default false
+   */
+  manualUpdate?: boolean;
 
-	/**
-	 * The rate at which to call the fixed update loop per second.
-	 *
-	 * This is in per second, so a value of 60 would execute the fixed update loop 60 times per second.
-	 *
-	 * @default 60
-	 */
-	fixedUpdateRate?: number;
+  /**
+   * The rate at which to call the fixed update loop per second.
+   *
+   * This is in per second, so a value of 60 would execute the fixed update loop 60 times per second.
+   *
+   * @default 60
+   */
+  fixedUpdateRate?: number;
 
-	/**
-	 * The number of physics position iterations to perform each update.
-	 *
-	 * @default 6
-	 */
-	positionIterations?: number;
+  /**
+   * The number of physics position iterations to perform each update.
+   *
+   * @default 6
+   */
+  positionIterations?: number;
 
-	/**
-	 * The number of physics velocity iterations to perform each update.
-	 *
-	 * @default 4
-	 */
-	velocityIterations?: number;
+  /**
+   * The number of physics velocity iterations to perform each update.
+   *
+   * @default 4
+   */
+  velocityIterations?: number;
 
-	/**
-	 * The gravity to apply to the physics world.
-	 *
-	 * @default { x: 0, y: 9.81 }
-	 */
-	gravity?: Vec2;
+  /**
+   * The gravity to apply to the physics world.
+   *
+   * @default { x: 0, y: 9.81 }
+   */
+  gravity?: Vec2;
 
-	/**
-	 * The slop of colliders in the physics world.
-	 *
-	 * @default 0.05
-	 */
-	colliderSlop?: number;
+  /**
+   * The slop of colliders in the physics world.
+   *
+   * @default 0.05
+   */
+  colliderSlop?: number;
 }
 
 const defaultEngineOptions: Partial<EngineOptions> = {
-	autoStart: false,
-	manualUpdate: false,
-	fixedUpdateRate: 60,
-	positionIterations: 6,
-	velocityIterations: 4,
-	gravity: new Vec2(0, 0),
-	colliderSlop: 0.05,
+  autoStart: false,
+  manualUpdate: false,
+  fixedUpdateRate: 60,
+  positionIterations: 6,
+  velocityIterations: 4,
+  gravity: new Vec2(0, 0),
+  colliderSlop: 0.05,
 };
 
 /**
@@ -129,248 +130,257 @@ const defaultEngineOptions: Partial<EngineOptions> = {
  * Actions are processed just before the fixed update step.
  */
 export default class Engine {
-	public readonly type: EngineType;
-	public readonly registry: Registry;
-	public readonly physics: PhysicsWorld;
-	public readonly actions: ActionsManager<any> = new ActionsManager();
+  public readonly type: EngineType;
+  public readonly registry: Registry;
+  public readonly physics: PhysicsWorld;
+  public readonly sceneGraph: SceneGraph;
+  public readonly actions: ActionsManager<any> = new ActionsManager();
 
-	private readonly options: Required<EngineOptions>;
-	private readonly updateCallbacks: Map<UpdateCallbackType, UpdateCallback[]> = new Map();
+  private readonly options: Required<EngineOptions>;
+  private readonly updateCallbacks: Map<UpdateCallbackType, UpdateCallback[]> = new Map();
 
-	private started = false;
+  private started = false;
 
-	private updateTimeAccumulator = 0;
-	private lastUpdateTime = 0;
-	private lastUpdateDelta = 0;
-	private timeScale = 1;
+  private updateTimeAccumulator = 0;
+  private lastUpdateTime = 0;
+  private lastUpdateDelta = 0;
+  private timeScale = 1;
 
-	/**
-	 * Creates a new engine.
-	 *
-	 * @param options The options for the engine.
-	 */
-	constructor(options: EngineOptions) {
-		this.options = { ...defaultEngineOptions, ...options } as Required<EngineOptions>;
+  /**
+   * Creates a new engine.
+   *
+   * @param options The options for the engine.
+   */
+  constructor(options: EngineOptions) {
+    this.options = { ...defaultEngineOptions, ...options } as Required<EngineOptions>;
 
-		this.type = options.type;
-		this.registry = new Registry(engineTypeToRegistryType(this.type), this.options.state.entities);
+    this.type = options.type;
+    this.registry = new Registry(engineTypeToRegistryType(this.type), this.options.state.entities);
 
-		this.physics = new PhysicsWorld({
-			positionIterations: this.options.positionIterations,
-			velocityIterations: this.options.velocityIterations,
-			gravity: this.options.gravity,
-			slop: this.options.colliderSlop,
-		});
-		this.registry.addSystem(this.physics);
+    this.sceneGraph = new SceneGraph(this);
+    this.registry.addSystem(this.sceneGraph);
 
-		this.options.state.onChange(this.stateUpdate.bind(this));
+    this.physics = new PhysicsWorld({
+      positionIterations: this.options.positionIterations,
+      velocityIterations: this.options.velocityIterations,
+      gravity: this.options.gravity,
+      slop: this.options.colliderSlop,
+      engine: this,
+    });
+    this.registry.addSystem(this.physics);
 
-		if (this.options.autoStart) {
-			this.start();
-		}
-	}
+    this.options.state.onChange(this.stateUpdate.bind(this));
 
-	/**
-	 * Starts the engine.
-	 */
-	public start() {
-		if (this.started) {
-			return;
-		}
+    if (this.options.autoStart) {
+      this.start();
+    }
+  }
 
-		this.started = true;
-		this.lastUpdateTime = Date.now() - 1000 / this.options.fixedUpdateRate;
+  /**
+   * Starts the engine.
+   */
+  public start() {
+    if (this.started) {
+      return;
+    }
 
-		if (!this.options.manualUpdate) {
-			this.update();
-		}
-	}
+    this.started = true;
+    this.lastUpdateTime = Date.now() - 1000 / this.options.fixedUpdateRate;
 
-	/**
-	 * Stops the engine.
-	 */
-	public stop() {
-		if (!this.started) {
-			return;
-		}
+    // run pre-updates
+    this.sceneGraph.update(this.registry.createSystemUpdateData(this, this.sceneGraph, 1 / 60));
+    this.physics.fixedUpdate(this.registry.createSystemUpdateData(this, this.physics, 1 / 60));
 
-		this.started = false;
-	}
+    if (!this.options.manualUpdate) {
+      this.update();
+    }
+  }
 
-	/**
-	 * Disposes of the engine.
-	 */
-	public dispose() {
-		this.stop();
-		this.registry.dispose(this);
-	}
+  /**
+   * Stops the engine.
+   */
+  public stop() {
+    if (!this.started) {
+      return;
+    }
 
-	/**
-	 * Adds an event listener for the given update type.
-	 *
-	 * @param type The type of the update callback.
-	 * @param callback The callback to call when the update type is triggered.
-	 */
-	public on(type: UpdateCallbackType, callback: UpdateCallback) {
-		if (!this.updateCallbacks.has(type)) {
-			this.updateCallbacks.set(type, []);
-		}
+    this.started = false;
+  }
 
-		this.updateCallbacks.get(type)!.push(callback);
-	}
+  /**
+   * Disposes of the engine.
+   */
+  public dispose() {
+    this.stop();
+    this.registry.dispose(this);
+  }
 
-	/**
-	 * Removes an event listener for the given update type.
-	 *
-	 * @param type The type of the update callback.
-	 * @param callback The callback to remove.
-	 */
-	public off(type: UpdateCallbackType, callback: UpdateCallback) {
-		if (!this.updateCallbacks.has(type)) {
-			return;
-		}
+  /**
+   * Adds an event listener for the given update type.
+   *
+   * @param type The type of the update callback.
+   * @param callback The callback to call when the update type is triggered.
+   */
+  public on(type: UpdateCallbackType, callback: UpdateCallback) {
+    if (!this.updateCallbacks.has(type)) {
+      this.updateCallbacks.set(type, []);
+    }
 
-		const callbacks = this.updateCallbacks.get(type)!;
-		const index = callbacks.indexOf(callback);
-		if (index === -1) {
-			return;
-		}
+    this.updateCallbacks.get(type)!.push(callback);
+  }
 
-		callbacks.splice(index, 1);
-	}
+  /**
+   * Removes an event listener for the given update type.
+   *
+   * @param type The type of the update callback.
+   * @param callback The callback to remove.
+   */
+  public off(type: UpdateCallbackType, callback: UpdateCallback) {
+    if (!this.updateCallbacks.has(type)) {
+      return;
+    }
 
-	/**
-	 * Gets wether or not the engine has been started.
-	 *
-	 * @returns Wether or not the engine has been started.
-	 */
-	public isStarted() {
-		return this.started;
-	}
+    const callbacks = this.updateCallbacks.get(type)!;
+    const index = callbacks.indexOf(callback);
+    if (index === -1) {
+      return;
+    }
 
-	/**
-	 * Gets the delta time of fixed updates.
-	 *
-	 * @returns The delta time of fixed updates.
-	 */
-	public getFixedUpdateDelta() {
-		return 1 / this.options.fixedUpdateRate;
-	}
+    callbacks.splice(index, 1);
+  }
 
-	/**
-	 * Gets the last update delta.
-	 *
-	 * This is the most recent update loops delta time.
-	 *
-	 * @returns The last update delta.
-	 */
-	public getLastUpdateDelta() {
-		return this.lastUpdateDelta;
-	}
+  /**
+   * Gets wether or not the engine has been started.
+   *
+   * @returns Wether or not the engine has been started.
+   */
+  public isStarted() {
+    return this.started;
+  }
 
-	/**
-	 * Gets the time scale of the engine.
-	 *
-	 * @returns The time scale of the engine.
-	 */
-	public getTimeScale() {
-		return this.timeScale;
-	}
+  /**
+   * Gets the delta time of fixed updates.
+   *
+   * @returns The delta time of fixed updates.
+   */
+  public getFixedUpdateDelta() {
+    return 1 / this.options.fixedUpdateRate;
+  }
 
-	/**
-	 * Sets the time scale of the engine.
-	 *
-	 * The delta time will be multiplied by this value in the update loop.
-	 *
-	 * This must be greater than or equal to 0.
-	 *
-	 * @param timeScale The time scale to set.
-	 */
-	public setTimeScale(timeScale: number) {
-		if (timeScale < 0) {
-			Logger.errorAndThrow("CORE", `Time scale must be greater than or equal to 0, got: ${timeScale}`);
-		}
+  /**
+   * Gets the last update delta.
+   *
+   * This is the most recent update loops delta time.
+   *
+   * @returns The last update delta.
+   */
+  public getLastUpdateDelta() {
+    return this.lastUpdateDelta;
+  }
 
-		this.timeScale = timeScale;
-	}
+  /**
+   * Gets the time scale of the engine.
+   *
+   * @returns The time scale of the engine.
+   */
+  public getTimeScale() {
+    return this.timeScale;
+  }
 
-	/**
-	 * Performs one tick of the update loop.
-	 *
-	 * If the engine is not started, this will do nothing.
-	 *
-	 * If manual update is false (default), this will schedule the next update loop.
-	 *
-	 * @warning Only use this if you know what you are doing or have manual update enabled.
-	 */
-	public update() {
-		if (!this.started) {
-			return;
-		}
+  /**
+   * Sets the time scale of the engine.
+   *
+   * The delta time will be multiplied by this value in the update loop.
+   *
+   * This must be greater than or equal to 0.
+   *
+   * @param timeScale The time scale to set.
+   */
+  public setTimeScale(timeScale: number) {
+    if (timeScale < 0) {
+      Logger.errorAndThrow("CORE", `Time scale must be greater than or equal to 0, got: ${timeScale}`);
+    }
 
-		const now = Date.now();
-		const dt = ((now - this.lastUpdateTime) / 1000) * this.timeScale;
-		this.lastUpdateDelta = dt;
-		this.lastUpdateTime = now;
-		this.updateTimeAccumulator += dt;
+    this.timeScale = timeScale;
+  }
 
-		// perform fixed updates
-		const fixedDt = this.getFixedUpdateDelta() * this.timeScale;
-		while (this.updateTimeAccumulator >= fixedDt) {
-			this.updateTimeAccumulator -= fixedDt;
-			this.fixedUpdate(fixedDt);
-		}
+  /**
+   * Performs one tick of the update loop.
+   *
+   * If the engine is not started, this will do nothing.
+   *
+   * If manual update is false (default), this will schedule the next update loop.
+   *
+   * @warning Only use this if you know what you are doing or have manual update enabled.
+   */
+  public update() {
+    if (!this.started) {
+      return;
+    }
 
-		// pre
-		this.updateCallbacks.get(UpdateCallbackType.PRE_UPDATE)?.forEach((callback) => callback(dt));
+    const now = Date.now();
+    const dt = ((now - this.lastUpdateTime) / 1000) * this.timeScale;
+    this.lastUpdateDelta = dt;
+    this.lastUpdateTime = now;
+    this.updateTimeAccumulator += dt;
 
-		// update
-		this.registry.update(this, dt);
+    // perform fixed updates
+    const fixedDt = this.getFixedUpdateDelta() * this.timeScale;
+    while (this.updateTimeAccumulator >= fixedDt) {
+      this.updateTimeAccumulator -= fixedDt;
+      this.fixedUpdate(fixedDt);
+    }
 
-		// post
-		this.updateCallbacks.get(UpdateCallbackType.POST_UPDATE)?.forEach((callback) => callback(dt));
+    // pre
+    this.updateCallbacks.get(UpdateCallbackType.PRE_UPDATE)?.forEach((callback) => callback(dt));
 
-		// clear key presses this update
-		Keyboard.clearKeyPressesThisUpdate();
+    // update
+    this.registry.update(this, dt);
 
-		// clear button presses this update
-		Mouse.clearButtonPressesThisUpdate();
+    // post
+    this.updateCallbacks.get(UpdateCallbackType.POST_UPDATE)?.forEach((callback) => callback(dt));
 
-		if (!this.options.manualUpdate) {
-			requestAnimationFrame(() => this.update());
-		}
-	}
+    // clear key presses this update
+    Keyboard.clearKeyPressesThisUpdate();
 
-	private fixedUpdate(dt: number) {
-		if (!this.started) {
-			return;
-		}
+    // clear button presses this update
+    Mouse.clearButtonPressesThisUpdate();
 
-		// process actions
-		this.actions.flush(this, dt);
+    if (!this.options.manualUpdate) {
+      requestAnimationFrame(() => this.update());
+    }
+  }
 
-		// pre
-		this.updateCallbacks.get(UpdateCallbackType.PRE_FIXED_UPDATE)?.forEach((callback) => callback(dt));
+  private fixedUpdate(dt: number) {
+    if (!this.started) {
+      return;
+    }
 
-		// update
-		this.registry.fixedUpdate(this, dt);
+    // process actions
+    this.actions.flush(this, dt);
 
-		// post
-		this.updateCallbacks.get(UpdateCallbackType.POST_FIXED_UPDATE)?.forEach((callback) => callback(dt));
-	}
+    // pre
+    this.updateCallbacks.get(UpdateCallbackType.PRE_FIXED_UPDATE)?.forEach((callback) => callback(dt));
 
-	private stateUpdate() {
-		if (!this.started) {
-			return;
-		}
+    // update
+    this.registry.fixedUpdate(this, dt);
 
-		// pre
-		this.updateCallbacks.get(UpdateCallbackType.PRE_STATE_UPDATE)?.forEach((callback) => callback(0));
+    // post
+    this.updateCallbacks.get(UpdateCallbackType.POST_FIXED_UPDATE)?.forEach((callback) => callback(dt));
+  }
 
-		// update
-		this.registry.stateUpdate(this);
+  private stateUpdate() {
+    if (!this.started) {
+      return;
+    }
 
-		// post
-		this.updateCallbacks.get(UpdateCallbackType.POST_STATE_UPDATE)?.forEach((callback) => callback(0));
-	}
+    // pre
+    this.updateCallbacks.get(UpdateCallbackType.PRE_STATE_UPDATE)?.forEach((callback) => callback(0));
+
+    // update
+    this.registry.stateUpdate(this);
+
+    // post
+    this.updateCallbacks.get(UpdateCallbackType.POST_STATE_UPDATE)?.forEach((callback) => callback(0));
+  }
 }

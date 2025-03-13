@@ -3,10 +3,12 @@ import { EngineType } from "@engine/src/engine";
 import { Keyboard } from "@engine/src/input/keyboard";
 import { Mouse } from "@engine/src/input/mouse";
 import { Renderer } from "@engine/src/rendering/renderer";
-import ParticleSpriteCreator from "@engine/src/rendering/sprite-creators/ParticleSpriteCreator";
-import PhysicsEntitySpriteCreator from "@engine/src/rendering/sprite-creators/PhysicsEntitySpriteCreator";
+import ParticleSpriteCreator from "@engine/src/rendering/sprite-creators/particleSpriteCreator";
+import PhysicsEntitySpriteCreator from "@engine/src/rendering/sprite-creators/physicsEntitySpriteCreator";
 import Game from "@game/src/game";
 import { MoveSystem } from "@game/src/systems/moveSystem";
+import { RotateSystem } from "@game/src/systems/rotateSystem";
+import { ScaleSystem } from "@game/src/systems/scaleSystem";
 import { sharedEngineOptions } from "@shared/src/engine";
 import Player from "@state/src/Player";
 import { State } from "@state/src/state";
@@ -58,6 +60,12 @@ export default async function setupGame(
   // add client systems
   game.registry.addSystem(
     new MoveSystem(player, room, () => (room ? ColyseusClient.getPing(room.id) / 2 : 0))
+  );
+  game.registry.addSystem(
+    new RotateSystem(player, room, () => (room ? ColyseusClient.getPing(room.id) / 2 : 0))
+  );
+  game.registry.addSystem(
+    new ScaleSystem(player, room, () => (room ? ColyseusClient.getPing(room.id) / 2 : 0))
   );
 
   // initalise async engine dependencies

@@ -10,12 +10,15 @@ import { Constraint } from "./constraint";
 import { Logger } from "@shared/src/Logger";
 import { Registry } from "../ecs/registry";
 import raycast, { RayCol } from "./raycast";
+import Engine from "../engine";
+import SceneGraph from "../scene/sceneGraph";
 
 export interface PhysicsWorldOptions {
   gravity: Vec2;
   positionIterations: number;
   velocityIterations: number;
   slop: number;
+  engine: Engine;
 }
 
 /**
@@ -43,7 +46,8 @@ export class PhysicsWorld extends System {
   private readonly options: PhysicsWorldOptions;
   private readonly collisionEvents: Map<ColliderEvent, Matter.Pair[]> = new Map();
 
-  private lastRegistry?: Registry;
+  private readonly sceneGraph: SceneGraph;
+  private readonly registry: Registry;
 
   /**
    * Creates a new physics world.
@@ -54,6 +58,8 @@ export class PhysicsWorld extends System {
     super(SystemType.SERVER_AND_CLIENT, new Set([Transform, Rigidbody]), 0);
 
     this.options = options;
+    this.registry = options.engine.registry;
+    this.sceneGraph = options.engine.sceneGraph;
 
     this.engine = Matter.Engine.create({
       positionIterations: options.positionIterations,
@@ -65,8 +71,6 @@ export class PhysicsWorld extends System {
   }
 
   public fixedUpdate = ({ registry, entities, dt }: SystemUpdateData) => {
-    this.lastRegistry = registry;
-
     // deletion step
     for (const entity of this.bodies.keys()) {
       // body no longer has required components for physics
@@ -127,7 +131,7 @@ export class PhysicsWorld extends System {
       }
 
       // update from transform
-      const transform = Entity.getComponent(e, Transform);
+      const transform = this.sceneGraph.getWorldTransform(e.id);
 
       if (transform.position.x !== body.position.x || transform.position.y !== body.position.y) {
         Matter.Body.setPosition(body, { x: transform.position.x, y: transform.position.y });
@@ -193,9 +197,16 @@ export class PhysicsWorld extends System {
       }
 
       const transform = Entity.getComponent(e, Transform);
-      transform.position.x = body.position.x;
-      transform.position.y = body.position.y;
-      transform.rotation = body.angle;
+      const localTransform = this.sceneGraph.toLocalTransform(e.id, {
+        position: new Vec2(body.position.x, body.position.y),
+        rotation: body.angle,
+        scale: body.plugin!.bodyScale!,
+        zIndex: transform.zIndex,
+      });
+
+      transform.position.x = localTransform.position.x;
+      transform.position.y = localTransform.position.y;
+      transform.rotation = localTransform.rotation;
     }
 
     this.flushMatterCollisionEvents();
@@ -392,10 +403,6 @@ export class PhysicsWorld extends System {
   }
 
   private onMatterCollisionEvent(type: ColliderEvent, pairs: Matter.Pair[]) {
-    if (!this.lastRegistry) {
-      return;
-    }
-
     for (const pair of pairs) {
       if (!pair.bodyA.plugin || !pair.bodyB.plugin) {
         continue;
@@ -403,12 +410,12 @@ export class PhysicsWorld extends System {
 
       const entityA = (pair.bodyA as TypedBody).plugin!.entity;
       const entityB = (pair.bodyB as TypedBody).plugin!.entity;
-      if (!entityA || !entityB || !this.lastRegistry.has(entityA) || !this.lastRegistry.has(entityB)) {
+      if (!entityA || !entityB || !this.registry.has(entityA) || !this.registry.has(entityB)) {
         continue;
       }
 
-      const eA = this.lastRegistry.get(entityA);
-      const eB = this.lastRegistry.get(entityB);
+      const eA = this.registry.get(entityA);
+      const eB = this.registry.get(entityB);
 
       const colliderA = PhysicsWorld.getCollider(eA);
       const colliderB = PhysicsWorld.getCollider(eB);

@@ -58,10 +58,10 @@ export default class SpriteSpriteCreator implements SpriteCreator {
     this.createdSpriteTypeMap = new Map();
   }
 
-  public readonly create: SpriteCreatorCreate = ({ app, registry, world, entity }) => {
+  public readonly create: SpriteCreatorCreate = ({ app, registry, sceneGraph, world, entity }) => {
     const e = registry.get(entity);
 
-    const transform = Entity.getComponent(e, Transform);
+    const transform = sceneGraph.getWorldTransform(e.id);
     const spriteTag = Entity.getComponent(e, SpriteTag);
 
     const collider = PhysicsWorld.getCollider(e);
@@ -109,12 +109,9 @@ export default class SpriteSpriteCreator implements SpriteCreator {
     width = spriteTag.overrideWidth || width;
     height = spriteTag.overrideHeight || height;
 
-    const container = new Container();
-    container.pivot.set(width / 2, height / 2);
-
     const image = this.spriteImageMap.get(spriteTag.spriteType)!;
 
-    let s: ContainerChild;
+    let s: Sprite | TilingSprite | AnimatedSprite;
     switch (image.type) {
       case SpriteImageType.SINGLE:
         s = new Sprite({
@@ -127,8 +124,8 @@ export default class SpriteSpriteCreator implements SpriteCreator {
         if (typeof image.tileWidth !== "number" || typeof image.tileHeight !== "number") {
           Logger.errorAndThrow("RENDERER", "Tile image must have tileWidth and tileHeight defined.");
 
-          // this will never happen
-          return container;
+          // will never happen
+          throw new Error("Unreachable code");
         }
 
         s = new TilingSprite({
@@ -149,34 +146,34 @@ export default class SpriteSpriteCreator implements SpriteCreator {
         (s as AnimatedSprite).animationSpeed = image.animationSpeed ?? 1;
         (s as AnimatedSprite).play();
         break;
-      // default:
-      // 	Logger.errorAndThrow("RENDERER", `Unsupported sprite image type: ${image.type}`);
+      default:
+        Logger.errorAndThrow("RENDERER", "Unsupported sprite image type");
 
-      // 	// will never happen
-      // 	return container;
+        // will never happen
+        throw new Error("Unreachable code");
     }
 
-    container.addChild(s);
-    world.addChild(container);
+    world.addChild(s);
 
-    container.position.set(transform.position.x, transform.position.y);
-    container.rotation = transform.rotation;
-    container.scale.set(transform.scale.x, -transform.scale.y);
-    container.zIndex = transform.zIndex;
-    container.alpha = spriteTag.opacity;
+    s.position.set(transform.position.x, transform.position.y);
+    s.rotation = transform.rotation;
+    s.scale.set(transform.scale.x, -transform.scale.y);
+    s.zIndex = transform.zIndex;
+    s.alpha = spriteTag.opacity;
+    s.anchor.set(0.5);
 
     this.createdSpriteTypeMap.set(entity, spriteTag.spriteType);
 
-    return container;
+    return s;
   };
 
   public readonly update: SpriteCreatorUpdate = (data) => {
-    const { registry, app, entity, sprite, dt } = data;
+    const { registry, app, sceneGraph, entity, sprite, dt } = data;
 
     const e = registry.get(entity);
     const s = sprite!;
 
-    const transform = Entity.getComponent(e, Transform);
+    const transform = sceneGraph.getWorldTransform(e.id);
     const spriteTag = Entity.getComponent(e, SpriteTag);
 
     if (spriteTag.spriteType !== this.createdSpriteTypeMap.get(entity)) {

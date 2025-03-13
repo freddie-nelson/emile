@@ -22,9 +22,6 @@ export type MovePlayerServerMessageData = z.infer<typeof movePlayerActionSchema>
 
 const movePlayerActionHandler: ActionHandler<ActionType, MovePlayerData> = (engine, action, data, dt) => {
   const { player, dir } = data;
-  if (!player || !dir) {
-    return;
-  }
 
   const registry = engine.registry;
   if (!registry.has(player.entity)) {

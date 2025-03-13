@@ -10,6 +10,7 @@ import { Transform } from "@engine/src/core/transform";
 import { actions } from "./actions/actionsList";
 import { ParticleEmitter, ParticleEmitterColorStop } from "@engine/src/rendering/particles/emitter";
 import { ColorTag } from "@engine/src/rendering/colorTag";
+import { ParentTag } from "@engine/src/scene/parentTag";
 
 export default class Game {
   private readonly options: EngineOptions;
@@ -104,7 +105,12 @@ export default class Game {
     rigidbody.frictionAir = 0.05;
     rigidbody.friction = 0.05;
 
-    const emitter = registry.add(playerEntity, new ParticleEmitter());
+    const emitterEntity = registry.create();
+    registry.add(emitterEntity, new Transform());
+    registry.add(emitterEntity, new Renderable());
+    registry.add(emitterEntity, new ParentTag(playerEntity));
+
+    const emitter = registry.add(emitterEntity, new ParticleEmitter());
     emitter.particleRotateSpeed = Math.PI * 2;
     emitter.particleStartColor = 0xf018af;
     emitter.particleColorStops.push(new ParticleEmitterColorStop(1, 0xffffff, 0.2));

@@ -1,7 +1,7 @@
-import { State } from "@state/src/state";
 import Engine from "../engine";
 import { EntityQuery } from "./entity";
 import { Registry } from "./registry";
+import SceneGraph from "../scene/sceneGraph";
 
 export enum SystemType {
   CLIENT,
@@ -12,6 +12,7 @@ export enum SystemType {
 export interface SystemUpdateData {
   readonly engine: Engine;
   readonly registry: Registry;
+  readonly sceneGraph: SceneGraph;
   readonly entities: Set<string>;
   readonly dt: number;
 }

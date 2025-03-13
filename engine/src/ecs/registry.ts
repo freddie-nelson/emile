@@ -151,7 +151,11 @@ export class Registry {
    * @param dt The delta time since the last update.
    */
   public update(engine: Engine, dt: number) {
-    for (const system of this.systems) {
+    for (const system of [...this.systems]) {
+      if (!this.hasSystem(system)) {
+        continue;
+      }
+
       system.update?.(this.createSystemUpdateData(engine, system, dt));
     }
   }
@@ -163,7 +167,11 @@ export class Registry {
    * @param dt The delta time since the last fixed update. (this should be constant)
    */
   public fixedUpdate(engine: Engine, dt: number) {
-    for (const system of this.systems) {
+    for (const system of [...this.systems]) {
+      if (!this.hasSystem(system)) {
+        continue;
+      }
+
       system.fixedUpdate?.(this.createSystemUpdateData(engine, system, dt));
     }
   }
@@ -174,7 +182,11 @@ export class Registry {
    * @param engine The engine owning the registry.
    */
   public stateUpdate(engine: Engine) {
-    for (const system of this.systems) {
+    for (const system of [...this.systems]) {
+      if (!this.hasSystem(system)) {
+        continue;
+      }
+
       system.stateUpdate?.(this.createSystemUpdateData(engine, system));
     }
   }
@@ -493,10 +505,11 @@ export class Registry {
     }
   }
 
-  private createSystemUpdateData(engine: Engine, system: System, dt: number = -1): SystemUpdateData {
+  public createSystemUpdateData(engine: Engine, system: System, dt: number = -1): SystemUpdateData {
     return {
       engine: engine,
       registry: this,
+      sceneGraph: engine.sceneGraph,
       entities: this.queryEntities.get(system.queryKey)!,
       dt,
     };
