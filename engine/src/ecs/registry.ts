@@ -394,6 +394,17 @@ export class Registry {
   }
 
   /**
+   * Gets the systems in the registry.
+   *
+   * This returns a copy of the systems array, but the systems themselves are not copied.
+   *
+   * @returns The systems in the registry.
+   */
+  public getSystems() {
+    return [...this.systems];
+  }
+
+  /**
    * Checks if the system type matches the registry type.
    *
    * @param system The system to check if the type matches the registry type.

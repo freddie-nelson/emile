@@ -7,6 +7,7 @@ import ParticleSpriteCreator from "@engine/src/rendering/sprite-creators/particl
 import PhysicsEntitySpriteCreator from "@engine/src/rendering/sprite-creators/physicsEntitySpriteCreator";
 import Game from "@game/src/game";
 import { MoveSystem } from "@game/src/systems/moveSystem";
+import { PlayerSystem } from "@game/src/systems/playerSystem";
 import { RotateSystem } from "@game/src/systems/rotateSystem";
 import { ScaleSystem } from "@game/src/systems/scaleSystem";
 import { sharedEngineOptions } from "@shared/src/engine";
@@ -67,6 +68,8 @@ export default async function setupGame(
   game.registry.addSystem(
     new ScaleSystem(player, room, () => (room ? ColyseusClient.getPing(room.id) / 2 : 0))
   );
+
+  game.registry.addSystem(new PlayerSystem(state.players));
 
   // initalise async engine dependencies
   await renderer.init();

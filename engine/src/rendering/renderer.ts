@@ -212,9 +212,18 @@ export class Renderer extends System {
   public dispose = () => {
     this.waitForInitialized().then(() => {
       this.resizeObserver?.disconnect();
-      this.app?.destroy({
-        removeView: true,
-      });
+      this.app?.destroy(
+        {
+          removeView: true,
+        },
+        {
+          children: true,
+          texture: true,
+          textureSource: true,
+          context: true,
+          style: true,
+        }
+      );
     });
   };
 

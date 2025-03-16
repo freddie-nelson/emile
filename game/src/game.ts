@@ -11,6 +11,8 @@ import { actions } from "./actions/actionsList";
 import { ParticleEmitter, ParticleEmitterColorStop } from "@engine/src/rendering/particles/emitter";
 import { ColorTag } from "@engine/src/rendering/colorTag";
 import { ParentTag } from "@engine/src/scene/parentTag";
+import World from "@engine/src/scene/world";
+import { createServerMainScene } from "./scenes/main";
 
 export default class Game {
   private readonly options: EngineOptions;
@@ -42,14 +44,11 @@ export default class Game {
     this.registerActions();
 
     // initialise game here
-    this.registry.addSystem(new PlayerSystem(this.options.state.players));
 
     // only create/modify entities on the server (EXTREMELY IMPORTANT TO REMEMBER)
     if (this.options.type === EngineType.SERVER) {
-      // create players
-      for (const player of this.options.state.players.values()) {
-        this.createPlayer(player);
-      }
+      const scene = createServerMainScene(this, this.options.state.players);
+      this.engine.scenes.switch(scene);
     }
 
     // start engine
@@ -64,15 +63,6 @@ export default class Game {
 
     // stop engine
     this._engine.stop();
-  }
-
-  /**
-   * This calls `update` on the engine.
-   *
-   * @see Engine.update()
-   */
-  public update() {
-    this._engine.update();
   }
 
   /**
@@ -138,6 +128,10 @@ export default class Game {
 
   public get actions() {
     return this._engine.actions;
+  }
+
+  public get world() {
+    return this._engine.world;
   }
 
   // private

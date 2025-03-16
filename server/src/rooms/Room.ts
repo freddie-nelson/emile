@@ -45,7 +45,7 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
       manualUpdate: true,
     });
 
-    this.setSimulationInterval(() => this.game?.update(), DefaultRoom.SIMULATION_INTERVAL);
+    this.setSimulationInterval(() => this.game?.engine.update(), DefaultRoom.SIMULATION_INTERVAL);
 
     // setup messages
     this.onMessage(ClientToRoomMessage.START_GAME, this.handleStartGame.bind(this));

@@ -7,6 +7,8 @@ import { ActionsManager } from "./core/actions";
 import { Keyboard } from "./input/keyboard";
 import { Mouse } from "./input/mouse";
 import SceneGraph from "./scene/sceneGraph";
+import World from "./scene/world";
+import SceneManager from "./scene/sceneManager";
 
 export enum EngineType {
   SERVER,
@@ -131,14 +133,13 @@ const defaultEngineOptions: Partial<EngineOptions> = {
  */
 export default class Engine {
   public readonly type: EngineType;
-  public readonly registry: Registry;
-  public readonly physics: PhysicsWorld;
-  public readonly sceneGraph: SceneGraph;
   public readonly actions: ActionsManager<any> = new ActionsManager();
+  public readonly scenes: SceneManager;
 
   private readonly options: Required<EngineOptions>;
   private readonly updateCallbacks: Map<UpdateCallbackType, UpdateCallback[]> = new Map();
 
+  private _world: World;
   private started = false;
 
   private updateTimeAccumulator = 0;
@@ -153,27 +154,52 @@ export default class Engine {
    */
   constructor(options: EngineOptions) {
     this.options = { ...defaultEngineOptions, ...options } as Required<EngineOptions>;
-
     this.type = options.type;
-    this.registry = new Registry(engineTypeToRegistryType(this.type), this.options.state.entities);
 
-    this.sceneGraph = new SceneGraph(this);
-    this.registry.addSystem(this.sceneGraph);
+    this._world = new World(this, this.options);
 
-    this.physics = new PhysicsWorld({
-      positionIterations: this.options.positionIterations,
-      velocityIterations: this.options.velocityIterations,
-      gravity: this.options.gravity,
-      slop: this.options.colliderSlop,
-      engine: this,
+    this.scenes = new SceneManager(this, {
+      setWorld: (world) => {
+        this._world = world;
+      },
     });
-    this.registry.addSystem(this.physics);
 
     this.options.state.onChange(this.stateUpdate.bind(this));
 
     if (this.options.autoStart) {
       this.start();
     }
+  }
+
+  // getters
+
+  public get world() {
+    return this._world;
+  }
+
+  public get registry() {
+    return this._world.registry;
+  }
+
+  public get physics() {
+    return this._world.physics;
+  }
+
+  public get sceneGraph() {
+    return this._world.sceneGraph;
+  }
+
+  public get state() {
+    return this.options.state;
+  }
+
+  /**
+   * Gets the options of the engine.
+   *
+   * This will return a copy of the options, so modifying the returned object will not modify the engine's options.
+   */
+  public get opts() {
+    return { ...this.options };
   }
 
   /**
@@ -187,9 +213,7 @@ export default class Engine {
     this.started = true;
     this.lastUpdateTime = Date.now() - 1000 / this.options.fixedUpdateRate;
 
-    // run pre-updates
-    this.sceneGraph.update(this.registry.createSystemUpdateData(this, this.sceneGraph, 1 / 60));
-    this.physics.fixedUpdate(this.registry.createSystemUpdateData(this, this.physics, 1 / 60));
+    this._world.init();
 
     if (!this.options.manualUpdate) {
       this.update();
@@ -212,7 +236,7 @@ export default class Engine {
    */
   public dispose() {
     this.stop();
-    this.registry.dispose(this);
+    this._world.dispose();
   }
 
   /**
@@ -335,7 +359,7 @@ export default class Engine {
     this.updateCallbacks.get(UpdateCallbackType.PRE_UPDATE)?.forEach((callback) => callback(dt));
 
     // update
-    this.registry.update(this, dt);
+    this._world.update(dt);
 
     // post
     this.updateCallbacks.get(UpdateCallbackType.POST_UPDATE)?.forEach((callback) => callback(dt));
@@ -363,7 +387,7 @@ export default class Engine {
     this.updateCallbacks.get(UpdateCallbackType.PRE_FIXED_UPDATE)?.forEach((callback) => callback(dt));
 
     // update
-    this.registry.fixedUpdate(this, dt);
+    this._world.fixedUpdate(dt);
 
     // post
     this.updateCallbacks.get(UpdateCallbackType.POST_FIXED_UPDATE)?.forEach((callback) => callback(dt));
@@ -378,7 +402,7 @@ export default class Engine {
     this.updateCallbacks.get(UpdateCallbackType.PRE_STATE_UPDATE)?.forEach((callback) => callback(0));
 
     // update
-    this.registry.stateUpdate(this);
+    this._world.stateUpdate();
 
     // post
     this.updateCallbacks.get(UpdateCallbackType.POST_STATE_UPDATE)?.forEach((callback) => callback(0));

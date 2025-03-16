@@ -10,15 +10,15 @@ import { Constraint } from "./constraint";
 import { Logger } from "@shared/src/Logger";
 import { Registry } from "../ecs/registry";
 import raycast, { RayCol } from "./raycast";
-import Engine from "../engine";
 import SceneGraph from "../scene/sceneGraph";
+import World from "../scene/world";
 
 export interface PhysicsWorldOptions {
   gravity: Vec2;
   positionIterations: number;
   velocityIterations: number;
   slop: number;
-  engine: Engine;
+  world: World;
 }
 
 /**
@@ -58,8 +58,8 @@ export class PhysicsWorld extends System {
     super(SystemType.SERVER_AND_CLIENT, new Set([Transform, Rigidbody]), 0);
 
     this.options = options;
-    this.registry = options.engine.registry;
-    this.sceneGraph = options.engine.sceneGraph;
+    this.registry = options.world.registry;
+    this.sceneGraph = options.world.sceneGraph;
 
     this.engine = Matter.Engine.create({
       positionIterations: options.positionIterations,
