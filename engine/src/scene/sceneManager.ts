@@ -143,7 +143,7 @@ export default class SceneManager {
     for (const [id, entity] of state.entities as MapSchema<Entity>) {
       this.engine.state.entities.set(id, entity.clone());
     }
-    console.log(JSON.stringify(this.engine.state.entities.toJSON(), null, 2));
+    // console.log(JSON.stringify(this.engine.state.entities.toJSON(), null, 2));
 
     const world = new World(this.engine, this.engine.opts);
     if (this.engine.isStarted()) {
