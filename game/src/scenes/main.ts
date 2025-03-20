@@ -1,5 +1,4 @@
 import SceneManager, { Scene } from "@engine/src/scene/sceneManager";
-import Player from "@state/src/Player";
 import Game from "../game";
 import { Transform } from "@engine/src/core/transform";
 import { Vec2 } from "@engine/src/math/vec";
@@ -13,6 +12,14 @@ import { PlayerSystem } from "../systems/playerSystem";
 import { State } from "@state/src/state";
 import { SceneType } from "./scenes";
 import World from "@engine/src/scene/world";
+import { Renderer } from "@engine/src/rendering/renderer";
+import PhysicsEntitySpriteCreator from "@engine/src/rendering/sprite-creators/physicsEntitySpriteCreator";
+import ParticleSpriteCreator from "@engine/src/rendering/sprite-creators/particleSpriteCreator";
+import { MoveSystem } from "../systems/moveSystem";
+import { RotateSystem } from "../systems/rotateSystem";
+import { ScaleSystem } from "../systems/scaleSystem";
+import Player from "@state/src/Player";
+import { Room } from "colyseus.js";
 
 export function createServerMainScene(game: Game, players: State["players"]): Scene {
   const world = SceneManager.createBlankWorld(game.engine);
@@ -50,6 +57,22 @@ export function createServerMainScene(game: Game, players: State["players"]): Sc
   }
 
   return SceneManager.createScene(SceneType.MAIN, world, (world: World, state: State) => {
+    world.registry.addSystem(new PlayerSystem(state.players));
+  });
+}
+
+export function createClientMainScene(
+  game: Game,
+  room: Room,
+  player: Player,
+  state: State,
+  getActionDelay: () => number
+): Scene {
+  return SceneManager.createClientScene(SceneType.MAIN, (world: World, state: State) => {
+    world.registry.addSystem(new MoveSystem(player, room, getActionDelay));
+    world.registry.addSystem(new RotateSystem(player, room, getActionDelay));
+    world.registry.addSystem(new ScaleSystem(player, room, getActionDelay));
+
     world.registry.addSystem(new PlayerSystem(state.players));
   });
 }

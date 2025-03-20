@@ -36,6 +36,7 @@ export type UpdateCallback = (dt: number) => void;
  * A post update callback is called after the update loop. This will be after all the registry systems have been updated.
  */
 export enum UpdateCallbackType {
+  START,
   PRE_UPDATE,
   POST_UPDATE,
   PRE_FIXED_UPDATE,
@@ -214,6 +215,8 @@ export default class Engine {
     this.lastUpdateTime = Date.now() - 1000 / this.options.fixedUpdateRate;
 
     this._world.init();
+
+    this.updateCallbacks.get(UpdateCallbackType.START)?.forEach((callback) => callback(0));
 
     if (!this.options.manualUpdate) {
       this.update();

@@ -1,8 +1,10 @@
 import { PhysicsWorld } from "../physics/world";
 import { Registry } from "../ecs/registry";
 import SceneGraph from "./sceneGraph";
-import Engine, { EngineOptions, engineTypeToRegistryType } from "../engine";
+import Engine, { EngineOptions, EngineType, engineTypeToRegistryType } from "../engine";
 import SceneManager from "./sceneManager";
+import { Renderer } from "../rendering/renderer";
+import { Logger } from "@shared/src/Logger";
 
 /**
  * The world class contains all the components that make up a game world.
@@ -18,6 +20,17 @@ export default class World {
   public readonly registry: Registry;
   public readonly sceneGraph: SceneGraph;
   public readonly physics: PhysicsWorld;
+
+  public get renderer() {
+    if (this.engine.type !== EngineType.CLIENT) {
+      Logger.errorAndThrow(
+        "WORLD",
+        "Cannot get renderer on server side, this is only available to the client."
+      );
+    }
+
+    return this.engine.registry.getSystems().find((s) => s instanceof Renderer);
+  }
 
   private readonly engine: Engine;
   private readonly options: Required<EngineOptions>;

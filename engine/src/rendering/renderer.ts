@@ -169,6 +169,8 @@ export interface SpriteCreator {
  * The renderer system.
  *
  * The renderer has a system priority of 0.
+ *
+ * The renderer should be added to the registry after the game/engine has been started, otherwise you may encounter issues.
  */
 export class Renderer extends System {
   private readonly options: Required<RendererOptions>;
@@ -246,8 +248,6 @@ export class Renderer extends System {
     };
     await this.app.init(options);
 
-    this.initialized = true;
-
     if (this.options.parentElement) {
       this.attach(this.options.parentElement);
     }
@@ -260,6 +260,8 @@ export class Renderer extends System {
 
     this.world = new Container();
     this.app.stage.addChild(this.world);
+
+    this.initialized = true;
   }
 
   public attach(parent: HTMLElement) {

@@ -405,6 +405,14 @@ export class Registry {
   }
 
   /**
+   * Clears all the systems from the registry.
+   */
+  public clearSystems() {
+    this.systems = [];
+    this.updateEntityMaps();
+  }
+
+  /**
    * Checks if the system type matches the registry type.
    *
    * @param system The system to check if the type matches the registry type.

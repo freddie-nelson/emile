@@ -6,10 +6,7 @@ import { Renderer } from "@engine/src/rendering/renderer";
 import ParticleSpriteCreator from "@engine/src/rendering/sprite-creators/particleSpriteCreator";
 import PhysicsEntitySpriteCreator from "@engine/src/rendering/sprite-creators/physicsEntitySpriteCreator";
 import Game from "@game/src/game";
-import { MoveSystem } from "@game/src/systems/moveSystem";
-import { PlayerSystem } from "@game/src/systems/playerSystem";
-import { RotateSystem } from "@game/src/systems/rotateSystem";
-import { ScaleSystem } from "@game/src/systems/scaleSystem";
+import { createClientMainScene } from "@game/src/scenes/main";
 import { sharedEngineOptions } from "@shared/src/engine";
 import Player from "@state/src/Player";
 import { State } from "@state/src/state";
@@ -27,10 +24,20 @@ export default async function setupGame(
     ...sharedEngineOptions,
     type: EngineType.CLIENT,
     state: state,
-    autoStart: true,
+    autoStart: false,
   });
 
+  // add scenes
+  // must be added before the game is started
+  game.engine.scenes.add(
+    createClientMainScene(game, room, player, state, () => (room ? ColyseusClient.getPing(room.id) / 2 : 0))
+  );
+
+  // start game
+  game.start();
+
   // setup renderer
+  // renderer must be created and added after the game has started
   const renderer = new Renderer({
     autoInit: false,
     autoSize: true,
@@ -57,19 +64,6 @@ export default async function setupGame(
 
   // add renderer
   game.registry.addSystem(renderer);
-
-  // add client systems
-  game.registry.addSystem(
-    new MoveSystem(player, room, () => (room ? ColyseusClient.getPing(room.id) / 2 : 0))
-  );
-  game.registry.addSystem(
-    new RotateSystem(player, room, () => (room ? ColyseusClient.getPing(room.id) / 2 : 0))
-  );
-  game.registry.addSystem(
-    new ScaleSystem(player, room, () => (room ? ColyseusClient.getPing(room.id) / 2 : 0))
-  );
-
-  game.registry.addSystem(new PlayerSystem(state.players));
 
   // initalise async engine dependencies
   await renderer.init();
