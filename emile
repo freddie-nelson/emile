@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+# check if cli/dist exists
+if [ ! -d "cli/dist" ]; then
+    echo "CLI needs built, building CLI..."
+
+    # run npm build inside cli
+    npm run build --prefix cli
+
+    # check if build failed
+    if [ $? -ne 0 ]; then
+        echo "Failed to build CLI"
+        exit 1
+    fi
+
+    # check if dist exists
+    if [ ! -d "cli/dist" ]; then
+        echo "Failed to build CLI"
+        exit 1
+    fi
+
+    echo "Built CLI"
+fi
+
+# run the cli
+node cli/bin/run.js $@

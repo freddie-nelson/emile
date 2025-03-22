@@ -1,6 +1,6 @@
 {
   "name": "@emile/cli",
-  "description": "A command line interface for easier developing with the emile game engine",
+  "description": "A command line interface for easier developing with the emile game engine.\nYou should always run the CLI from the root directory of your project.",
   "version": "0.0.0",
   "author": "Freddie Nelson",
   "bin": {
@@ -57,7 +57,7 @@
   },
   "repository": "freddie-nelson/emile",
   "scripts": {
-    "build": "shx rm -rf dist && tsc -b",
+    "build": "shx rm -rf dist && tsc -b && oclif manifest && oclif readme",
     "lint": "eslint",
     "postpack": "shx rm -f oclif.manifest.json",
     "posttest": "pnpm run lint",

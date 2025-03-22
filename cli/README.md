@@ -29,9 +29,47 @@ USAGE
 <!-- usagestop -->
 # Commands
 <!-- commands -->
+* [`emile dev client`](#emile-dev-client)
+* [`emile dev server`](#emile-dev-server)
 * [`emile help [COMMAND]`](#emile-help-command)
 * [`emile next-id`](#emile-next-id)
 * [`emile setup`](#emile-setup)
+
+## `emile dev client`
+
+Runs the client dev server
+
+```
+USAGE
+  $ emile dev client [-e development|production|staging]
+
+FLAGS
+  -e, --env=<option>  [default: development] Environment to run the client in
+                      <options: development|production|staging>
+
+DESCRIPTION
+  Runs the client dev server
+```
+
+_See code: [src/commands/dev/client.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/src/commands/dev/client.ts)_
+
+## `emile dev server`
+
+Runs the server dev server
+
+```
+USAGE
+  $ emile dev server [-e development|production|staging]
+
+FLAGS
+  -e, --env=<option>  [default: development] Environment to run the server in
+                      <options: development|production|staging>
+
+DESCRIPTION
+  Runs the server dev server
+```
+
+_See code: [src/commands/dev/server.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/src/commands/dev/server.ts)_
 
 ## `emile help [COMMAND]`
 
