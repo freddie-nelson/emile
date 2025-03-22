@@ -3,6 +3,11 @@ export interface Environment {
   PORT: number;
   MONITOR_PANEL_USERNAME: string;
   MONITOR_PANEL_PASSWORD: string;
+  LOBBY_CHANNEL: string;
+  TICKS_PER_SECOND: number;
+  TICK_RATE: number;
+  PATCHES_PER_SECOND: number;
+  PATCH_RATE: number;
 }
 
 export const getStringEnv = (key: string): string => {
@@ -36,4 +41,9 @@ export const env: Environment = {
   PORT: getIntEnv("PORT"),
   MONITOR_PANEL_USERNAME: getStringEnv("MONITOR_PANEL_USERNAME"),
   MONITOR_PANEL_PASSWORD: getStringEnv("MONITOR_PANEL_PASSWORD"),
+  LOBBY_CHANNEL: getStringEnv("LOBBY_CHANNEL"),
+  TICKS_PER_SECOND: getIntEnv("TICKS_PER_SECOND"),
+  TICK_RATE: 1000 / getIntEnv("TICKS_PER_SECOND"),
+  PATCHES_PER_SECOND: getIntEnv("PATCHES_PER_SECOND"),
+  PATCH_RATE: 1000 / getIntEnv("PATCHES_PER_SECOND"),
 };

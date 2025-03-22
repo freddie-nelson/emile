@@ -16,27 +16,24 @@ import { sharedEngineOptions } from "@shared/src/engine";
 import { Logger } from "@shared/src/Logger";
 import Game from "@game/src/game";
 import { ActionHandler } from "@/ActionHandler";
+import { env } from "@/helpers/env";
 
 export class DefaultRoom extends Room<State, RoomMetadata> {
-  private static LOBBY_CHANNEL = "lobby";
-  private static SIMULATION_INTERVAL = 1000 / 60;
-  private static PATCH_RATE = 1000 / 30;
-
   private game?: Game;
 
   maxClients = 10;
 
   async onCreate(options: RoomJoinOptions) {
-    console.log("onCreate", options);
+    Logger.log("SERVER", `onCreate ${this.roomId}`);
 
-    this.roomId = await RoomIdGenerator.generate(this.presence, DefaultRoom.LOBBY_CHANNEL);
+    this.roomId = await RoomIdGenerator.generate(this.presence, env.LOBBY_CHANNEL);
     this.setMetadata({ joinable: true });
 
     const state = new State();
     state.roomInfo.maxPlayers = this.maxClients;
 
     this.setState(state);
-    this.setPatchRate(DefaultRoom.PATCH_RATE);
+    this.setPatchRate(env.PATCH_RATE);
 
     this.game = new Game({
       ...sharedEngineOptions,
@@ -45,7 +42,7 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
       manualUpdate: true,
     });
 
-    this.setSimulationInterval(() => this.game?.engine.update(), DefaultRoom.SIMULATION_INTERVAL);
+    this.setSimulationInterval(() => this.game?.engine.update(), env.TICK_RATE);
 
     // setup messages
     this.onMessage(ClientToRoomMessage.START_GAME, this.handleStartGame.bind(this));
@@ -67,7 +64,7 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
   }
 
   async onAuth(client: Client, options: RoomJoinOptions) {
-    console.log("onAuth", client.sessionId, options);
+    Logger.log("SERVER", `onAuth ${client.sessionId}`);
 
     const { success, error } = roomOptionsSchema.safeParse(options);
     if (!success) {
@@ -82,7 +79,7 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
   }
 
   onJoin(client: Client, options: RoomJoinOptions) {
-    console.log("onJoin", client.sessionId, options);
+    Logger.log("SERVER", `onJoin ${client.sessionId}`);
 
     if (!this.game) {
       return Logger.errorAndThrow("DEFAULTROOM", "Game not set in onJoin");
@@ -105,9 +102,9 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
   }
 
   async onDispose() {
-    console.log("onDispose");
+    Logger.log("SERVER", "onDispose");
 
-    await RoomIdGenerator.remove(this.presence, DefaultRoom.LOBBY_CHANNEL, this.roomId);
+    await RoomIdGenerator.remove(this.presence, env.LOBBY_CHANNEL, this.roomId);
   }
 
   private handleStartGame(client: Client) {
@@ -152,9 +149,13 @@ export class DefaultRoom extends Room<State, RoomMetadata> {
     this.state.roomInfo.started = started;
 
     if (started) {
+      Logger.log("SERVER", "Game started");
+
       this.game.start();
       this.setMetadata({ joinable: false });
     } else {
+      Logger.log("SERVER", "Game stopped");
+
       this.game.stop();
       this.setMetadata({ joinable: true });
     }
