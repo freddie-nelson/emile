@@ -57,6 +57,9 @@ importers:
       '@types/express':
         specifier: 5.0.0
         version: 5.0.0
+      async-mutex:
+        specifier: ^0.5.0
+        version: 0.5.0
       rimraf:
         specifier: 6.0.1
         version: 6.0.1
@@ -456,6 +459,9 @@ packages:
   assign-symbols@1.0.0:
     resolution: {integrity: sha512-Q+JC7Whu8HhmTdBph/Tq59IoRtoy6KAm5zzPv00WdujX82lbAL8K7WVjne7vdCsAmbF4AYaDOPyO3k0kl8qIrw==}
     engines: {node: '>=0.10.0'}
+
+  async-mutex@0.5.0:
+    resolution: {integrity: sha512-1A94B18jkJ3DYq284ohPxoXbfTA5HsQ7/Mf4DEhcyLx3Bz27Rh59iScbB6EPiP+B+joue6YCxcMXSbFC1tZKwA==}
 
   async@2.6.4:
     resolution: {integrity: sha512-mzo5dfJYwAn29PeiJ0zvwTo04zj8HDJj0Mn8TD7sno7q12prdbnasKJHhkm2c1LgrhlJ0teaea8860oxi51mGA==}
@@ -2035,6 +2041,10 @@ snapshots:
     optional: true
 
   assign-symbols@1.0.0: {}
+
+  async-mutex@0.5.0:
+    dependencies:
+      tslib: 2.8.0
 
   async@2.6.4:
     dependencies:

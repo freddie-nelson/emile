@@ -1,6 +1,7 @@
 import Watcher from "watcher";
 import { spawn } from "child_process";
 import kill from "tree-kill";
+import { Mutex } from "async-mutex";
 
 const watcher = new Watcher("../", {
   recursive: true,
@@ -50,11 +51,14 @@ const build = async () => {
     console.log("[DEV] Waiting for changes...");
     return;
   }
+};
+
+const start = async () => {
+  console.log("[DEV] Starting server...");
 
   runCommand("start", "node", ["build/server/src/index.js", "--env-file", ".env.development"]);
 };
 
-let stopPromise = null;
 const stop = async () => {
   if (!p) {
     return;
@@ -62,7 +66,7 @@ const stop = async () => {
 
   console.log("[DEV] Stopping server...");
 
-  stopPromise = new Promise((resolve) => {
+  return new Promise((resolve) => {
     p.once("exit", () => {
       if (pName === "start") {
         killed = false;
@@ -70,7 +74,6 @@ const stop = async () => {
 
       p = null;
       pName = "";
-      stopPromise = null;
       resolve();
     });
 
@@ -79,47 +82,46 @@ const stop = async () => {
     kill(p.pid);
     killed = true;
   });
-
-  return stopPromise;
 };
 
-let restarting = false;
-let stopRestart = false;
+const mutex = new Mutex();
+let activeRestartId = 0;
 
-const restart = async () => {
-  if (stopRestart) {
+const restart = async (id) => {
+  await mutex.acquire();
+
+  // Not the most recent restart so cancel
+  if (activeRestartId !== id) {
+    mutex.release();
     return;
-  }
-
-  if (restarting) {
-    stopRestart = true;
-
-    if (stopPromise) {
-      await stopPromise;
-    } else {
-      await stop();
-    }
-
-    stopRestart = false;
   }
 
   console.log("[DEV] Restarting server...");
 
-  restarting = true;
   await stop();
-  if (stopRestart) {
-    stopRestart = false;
+  if (activeRestartId !== id) {
+    mutex.release();
     return;
   }
 
   await build();
-  restarting = false;
+  if (activeRestartId !== id) {
+    mutex.release();
+    return;
+  }
+
+  await start();
+
+  mutex.release();
+};
+
+const onEvent = () => {
+  activeRestartId++;
+  restart(activeRestartId);
 };
 
 ["ready", "add", "change", "unlink", "unlinkDir"].forEach((event) => {
-  watcher.on(event, () => {
-    restart();
-  });
+  watcher.on(event, onEvent);
 });
 
 ["SIGINT", "SIGTERM"].forEach((signal) => {
