@@ -1,0 +1,1 @@
+{"root":["./src/index.ts","./src/commands/next-id/index.ts","./src/commands/setup/index.ts","./src/helpers/getnextcomponentid.ts","./src/helpers/setup.ts"],"version":"5.8.2"}
