@@ -1,8 +1,8 @@
-![Emile](https://raw.githubusercontent.com/freddie-nelson/emile/main/logo.webp)
+![emile](https://raw.githubusercontent.com/freddie-nelson/emile/main/logo.webp)
 
-# 🎮⚙️ Emile
+# emile 🎮⚙
 
-A 2D typescript game engine built on top of [Colyseus](https://colyseus.io), [Pixi.js](https://pixijs.com/) and [Matter.js](https://brm.io/matter-js/). Designed to make multiplayer game development as easy as singleplayer.
+A 2D typescript game engine for the web built on top of [Colyseus](https://colyseus.io), [Pixi.js](https://pixijs.com/) and [Matter.js](https://brm.io/matter-js/). Designed to make multiplayer game development as easy as singleplayer.
 
 ## Table of Contents 📰
 
@@ -11,20 +11,26 @@ A 2D typescript game engine built on top of [Colyseus](https://colyseus.io), [Pi
 - [License](#license)
 - [Contact](#contact)
 
-## Installation 🔥
+## Installation 📦
 
 ```bash
-# If you don't have degit installed
-npm install -g degit
-
 # If you don't have pnpm installed (required for development)
 npm install -g pnpm
+
+# If you don't have degit installed (to download the project)
+npm install -g degit
 
 # Download the project
 degit https://github.com/freddie-nelson/emile
 ```
 
-## Getting Started
+## Getting Started 🚀
+
+Navigate into the project directory:
+
+```bash
+cd emile # Or whatever you named the project
+```
 
 Get set up quickly using the emile CLI:
 
@@ -48,13 +54,13 @@ To start the development server:
 ./emile dev client
 ```
 
-## License
+## License 📜
 
 [MIT](./LICENSE)
 
 Copyright © 2024 - Present, Freddie Nelson
 
-## Contact
+## Contact 📧
 
 - [Send me an email 📧](mailto:freddie@freddienelson.co.uk)
 - [Contact me through my website](https://freddienelson.co.uk)
