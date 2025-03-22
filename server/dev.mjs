@@ -8,6 +8,8 @@ const watcher = new Watcher("../", {
   ignore: /node_modules|build|client|\.git/,
 });
 
+const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+
 let p = null;
 let pName = "";
 let killed = false;
@@ -39,7 +41,7 @@ const runCommand = (name, command, args) => {
 const build = async () => {
   console.log("[DEV] Building server...");
 
-  const res = await runCommand("build", "pnpm.cmd", ["run", "build"]);
+  const res = await runCommand("build", pnpm, ["run", "build"]);
   if (killed) {
     killed = false;
     console.log("[DEV] Build was killed.");

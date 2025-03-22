@@ -52,6 +52,21 @@ const checkNodeVersion = async () => {
   return true;
 };
 
+const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+
+const checkPnpm = async () => {
+  console.log("[DEV] Checking pnpm...");
+
+  const res = await runCommand("pnpm -v", pnpmCommand, ["-v"]);
+  if (!res.success) {
+    console.log("[DEV] pnpm is not installed.");
+    return false;
+  }
+
+  console.log("[DEV] pnpm is installed.");
+  return true;
+};
+
 const folders = ["client", "engine", "game", "server", "shared", "state"];
 
 const install = async () => {
@@ -66,7 +81,7 @@ const install = async () => {
 
     console.log(`[DEV] [${i}/${folders.length}] Installing dependencies for '${folder}'...`);
 
-    const res = await runCommand("install", "pnpm.cmd", ["install", "--force"], {
+    const res = await runCommand("install", pnpmCommand, ["install", "--force"], {
       cwd: path,
       stdio: "inherit",
     });
@@ -80,6 +95,6 @@ const install = async () => {
   console.log("[DEV] Dependencies installed.");
 };
 
-if (await checkNodeVersion()) {
-  await install();
+if ((await checkNodeVersion()) && (await checkPnpm())) {
+  return install();
 }
