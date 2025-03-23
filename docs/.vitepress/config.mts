@@ -1,4 +1,5 @@
 import { defineConfig } from "vitepress";
+import { scanDir } from "./utils.mts";
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -25,7 +26,15 @@ export default defineConfig({
       },
       {
         text: "Docs",
-        items: [{ text: "Welcome", link: "/docs/index.html" }],
+        items: [
+          { text: "Welcome", link: "/docs/index.html" },
+          {
+            text: "Engine API",
+            link: "/docs/api/engine/index.html",
+            collapsed: true,
+            items: scanDir("../docs/api/engine"),
+          },
+        ],
       },
       {
         text: "Contributing",

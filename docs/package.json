@@ -2,12 +2,19 @@
   "scripts": {
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",
-    "docs:preview": "vitepress preview"
+    "docs:preview": "vitepress preview",
+    "docs:typedoc:engine": "typedoc ../engine/src/ --out ./docs/api/engine --tsconfig ../engine/tsconfig.typedoc.json --plugin typedoc-plugin-markdown --plugin typedoc-plugin-rename-defaults --entryPointStrategy expand",
+    "docs:typedoc:game": "typedoc ../game/src/game.ts ../game/src/actions/actions.ts ../game/src/actions/actionsList.ts ../game/src/actions/actionType.ts --out ./docs/api/game --tsconfig ../game/tsconfig.typedoc.json --plugin typedoc-plugin-markdown --plugin typedoc-plugin-rename-defaults --entryPointStrategy expand",
+    "docs:typedoc": "npm run docs:typedoc:engine && npm run docs:typedoc:game"
   },
   "devDependencies": {
+    "typedoc": "^0.28.1",
+    "typedoc-plugin-rename-defaults": "^0.7.3",
     "vitepress": "^1.6.3"
   },
   "dependencies": {
-    "@catppuccin/vitepress": "^0.1.0"
+    "@catppuccin/vitepress": "^0.1.0",
+    "@types/node": "20",
+    "typedoc-plugin-markdown": "^4.5.2"
   }
 }

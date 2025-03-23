@@ -1,17 +1,6 @@
 import Engine, { EngineOptions, EngineType } from "@engine/src/engine";
 import { GameActionStore } from "./actions/actions";
-import { PlayerSystem } from "./systems/playerSystem";
-import Player from "@state/src/Player";
-import { Vec2 } from "@engine/src/math/vec";
-import { Rigidbody } from "@engine/src/physics/rigidbody";
-import { RectangleCollider } from "@engine/src/physics/collider";
-import { Renderable } from "@engine/src/rendering/renderable";
-import { Transform } from "@engine/src/core/transform";
 import { actions } from "./actions/actionsList";
-import { ParticleEmitter, ParticleEmitterColorStop } from "@engine/src/rendering/particles/emitter";
-import { ColorTag } from "@engine/src/rendering/colorTag";
-import { ParentTag } from "@engine/src/scene/parentTag";
-import World from "@engine/src/scene/world";
 import { createServerMainScene } from "./scenes/main";
 
 export default class Game {
