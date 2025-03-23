@@ -1,6 +1,7 @@
 import {spawn, SpawnOptions} from 'child_process'
 import {join} from 'path'
 import {pnpmCommand, runCommand} from './run.js'
+import {rmdirSync} from 'fs'
 
 const requiredVersion = 'v20.11.1'
 
@@ -63,8 +64,21 @@ const install = async () => {
   console.log('[DEV] Dependencies installed.')
 }
 
-export default async function setup() {
-  if ((await checkNodeVersion()) && (await checkPnpm())) {
-    return install()
+export default async function setup(depsOnly: boolean, keepDocs: boolean) {
+  if (!(await checkNodeVersion()) || !(await checkPnpm())) {
+    return
+  }
+
+  await install()
+  if (depsOnly) {
+    return
+  }
+
+  if (!keepDocs) {
+    console.log('[DEV] Removing docs folder...')
+    await rmdirSync(join(process.cwd(), 'docs'), {recursive: true})
+    console.log('[DEV] Docs folder removed.')
+  } else {
+    console.log('[DEV] Keeping docs folder.')
   }
 }
