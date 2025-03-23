@@ -68,15 +68,6 @@ export interface RendererOptions {
   scale?: number;
 
   /**
-   * Wether or not to flip the y axis.
-   *
-   * True will make the y axis increase upwards (sane), false will make the y axis decrease upwards (insane).
-   *
-   * @default true
-   */
-  flipYAxis?: boolean;
-
-  /**
    * Wether or not to enable the pixi dev tools.
    *
    * @default false
@@ -92,7 +83,6 @@ const defaultRendererOptions: Partial<RendererOptions> = {
   autoSize: true,
   backgroundColor: "black",
   scale: 60,
-  flipYAxis: true,
   enablePixiDevTools: false,
 };
 
@@ -383,7 +373,7 @@ export class Renderer extends System {
     this.camera.update(dt);
 
     const xScale = this.options.scale * this.camera.options.zoom;
-    const yScale = this.options.flipYAxis ? -xScale : xScale;
+    const yScale = -xScale; // flip y axis so y increases upwards
 
     if (this.app.stage.scale.x !== xScale || this.app.stage.scale.y !== yScale) {
       this.app.stage.scale.set(xScale, yScale);

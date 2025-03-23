@@ -95,8 +95,10 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     const position = Vec2.lerp(new Vec2(c.position.x, c.position.y), transform.position, CLIENT_LERP_RATE);
     c.position.set(position.x, position.y);
 
+    const scale = Vec2.lerp(new Vec2(c.scale.x, c.scale.y), transform.scale, CLIENT_LERP_RATE);
+    c.scale.set(scale.x, scale.y);
+
     c.rotation = lerp(c.rotation, transform.rotation, CLIENT_LERP_RATE);
-    c.scale.set(transform.scale.x, transform.scale.y);
     c.zIndex = transform.zIndex;
 
     this.updateEmitter(entity, dt, engine);

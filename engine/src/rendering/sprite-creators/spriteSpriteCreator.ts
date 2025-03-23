@@ -183,8 +183,10 @@ export default class SpriteSpriteCreator implements SpriteCreator {
     const position = Vec2.lerp(new Vec2(s.position.x, s.position.y), transform.position, CLIENT_LERP_RATE);
     s.position.set(position.x, position.y);
 
+    const scale = Vec2.lerp(new Vec2(s.scale.x, -s.scale.y), transform.scale, CLIENT_LERP_RATE);
+    s.scale.set(scale.x, -scale.y);
+
     s.rotation = lerp(s.rotation, transform.rotation, CLIENT_LERP_RATE);
-    s.scale.set(transform.scale.x, -transform.scale.y);
     s.zIndex = transform.zIndex;
     s.alpha = spriteTag.opacity;
   };

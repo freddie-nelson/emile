@@ -17,6 +17,7 @@ import { RotateSystem } from "../systems/rotateSystem";
 import { ScaleSystem } from "../systems/scaleSystem";
 import Player from "@state/src/Player";
 import { Room } from "colyseus.js";
+import { TextTag } from "@engine/src/rendering/text/textTag";
 
 export function createServerMainScene(game: Game, players: State["players"]): Scene {
   const world = SceneManager.createBlankWorld(game.engine);
@@ -49,6 +50,13 @@ export function createServerMainScene(game: Game, players: State["players"]): Sc
     emitter.particleStartSizeVariance = 0.1;
     emitter.particleEndSize = 0;
     emitter.particleStartSizeInterpolationT = 0.7;
+
+    const name = registry.create();
+    registry.add(name, new Transform(new Vec2(0, 1.5), 0, new Vec2(0.05)));
+    registry.add(name, new Renderable());
+    registry.add(name, new ParentTag(playerEntity));
+    registry.add(name, new ColorTag(0xffffff));
+    registry.add(name, new TextTag(p.name, "Arial"));
 
     p.entity = playerEntity;
   }

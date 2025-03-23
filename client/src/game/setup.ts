@@ -5,6 +5,7 @@ import { Mouse } from "@engine/src/input/mouse";
 import { Renderer } from "@engine/src/rendering/renderer";
 import ParticleSpriteCreator from "@engine/src/rendering/sprite-creators/particleSpriteCreator";
 import PhysicsEntitySpriteCreator from "@engine/src/rendering/sprite-creators/physicsEntitySpriteCreator";
+import TextSpriteCreator from "@engine/src/rendering/sprite-creators/textSpriteCreator";
 import Game from "@game/src/game";
 import { createClientMainScene } from "@game/src/scenes/main";
 import { sharedEngineOptions } from "@shared/src/engine";
@@ -61,6 +62,7 @@ export default async function setupGame(
 
   renderer.registerSpriteCreator(new PhysicsEntitySpriteCreator(0xff0000, 1));
   renderer.registerSpriteCreator(new ParticleSpriteCreator());
+  renderer.registerSpriteCreator(new TextSpriteCreator());
 
   // add renderer
   game.registry.addSystem(renderer);
