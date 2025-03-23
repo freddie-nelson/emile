@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@colyseus/schema": "2.0.35",
+    "gl-matrix": "3.4.3",
     "matter-js": "0.20.0",
     "pixi.js": "8.5.1"
   }

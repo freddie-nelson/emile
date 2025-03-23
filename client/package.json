@@ -13,6 +13,7 @@
   "dependencies": {
     "@react-hook/resize-observer": "2.0.2",
     "colyseus.js": "0.15.26",
+    "gl-matrix": "3.4.3",
     "matter-js": "0.20.0",
     "pixi.js": "8.5.1",
     "react": "18.3.1",
