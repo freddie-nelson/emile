@@ -11,6 +11,7 @@ export default defineConfig({
       dark: "catppuccin-mocha",
     },
   },
+  ignoreDeadLinks: true,
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
@@ -30,9 +31,15 @@ export default defineConfig({
           { text: "Welcome", link: "/docs/index.html" },
           {
             text: "Engine API",
-            link: "/docs/api/engine/index.html",
+            link: "/docs/api/engine/README.html",
             collapsed: true,
             items: scanDir("../docs/api/engine"),
+          },
+          {
+            text: "Game API",
+            link: "/docs/api/game/README.html",
+            collapsed: true,
+            items: scanDir("../docs/api/game"),
           },
         ],
       },

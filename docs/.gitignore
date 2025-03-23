@@ -1,4 +1,7 @@
 node_modules
 .vitepress/cache
+.vitepress/temp
+.vitepress/dist
 docs/api/engine
 docs/api/game
+dist
