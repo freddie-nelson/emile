@@ -25,7 +25,7 @@ export function createServerMainScene(game: Game, players: State["players"]): Sc
 
   for (const p of players.values()) {
     const playerEntity = registry.create();
-    registry.add(playerEntity, new Transform(new Vec2((Math.random() - 0.5) * 2)));
+    registry.add(playerEntity, new Transform(new Vec2((Math.random() - 0.5) * 2), 0, new Vec2(1), 1));
     registry.add(playerEntity, new Rigidbody());
     registry.add(playerEntity, new RectangleCollider(1.5, 1.5));
     registry.add(playerEntity, new Renderable());
@@ -52,7 +52,7 @@ export function createServerMainScene(game: Game, players: State["players"]): Sc
     emitter.particleStartSizeInterpolationT = 0.7;
 
     const name = registry.create();
-    registry.add(name, new Transform(new Vec2(0, 1.5), 0, new Vec2(0.05)));
+    registry.add(name, new Transform(new Vec2(0, -1.1), 0, new Vec2(0.01)));
     registry.add(name, new Renderable());
     registry.add(name, new ParentTag(playerEntity));
     registry.add(name, new ColorTag(0xffffff));
