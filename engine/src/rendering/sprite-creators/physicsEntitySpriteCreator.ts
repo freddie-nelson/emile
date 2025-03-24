@@ -1,4 +1,4 @@
-import { Color, ColorSource, Container, ContainerChild, Graphics } from "pixi.js";
+import { ColorSource, ContainerChild, Graphics } from "pixi.js";
 import { SpriteCreator, SpriteCreatorCreate, SpriteCreatorDelete, SpriteCreatorUpdate } from "../renderer";
 import { Rigidbody } from "../../physics/rigidbody";
 import { CircleCollider, ColliderType, PolygonCollider, RectangleCollider } from "../../physics/collider";
@@ -8,8 +8,9 @@ import { Logger } from "@shared/src/Logger";
 import { Entity, EntityQuery } from "../../ecs/entity";
 import { ColorTag } from "../colorTag";
 import { Vec2 } from "../../math/vec";
-import { lerp } from "../../math/lerp";
+import { lerpTransform } from "../../math/lerp";
 import { CLIENT_LERP_RATE } from "../../engine";
+import { createWorldTransform } from "../../scene/sceneGraph";
 
 export default class PhysicsEntitySpriteCreator implements SpriteCreator {
   public readonly query: EntityQuery = new Set([Transform, Rigidbody]);
@@ -105,10 +106,13 @@ export default class PhysicsEntitySpriteCreator implements SpriteCreator {
       return this.create(data);
     }
 
-    const position = Vec2.lerp(new Vec2(s.position.x, s.position.y), transform.position, CLIENT_LERP_RATE);
-    s.position.set(position.x, position.y);
-
-    s.rotation = lerp(s.rotation, transform.rotation, CLIENT_LERP_RATE);
+    const newTransform = lerpTransform(
+      createWorldTransform(s.position, s.rotation, s.scale, s.zIndex),
+      transform,
+      CLIENT_LERP_RATE
+    );
+    s.position.set(newTransform.position.x, newTransform.position.y);
+    s.rotation = newTransform.rotation;
     s.zIndex = this.zIndex ?? transform.zIndex;
 
     this.setPivot(s, collider?.type);

@@ -8,9 +8,10 @@ import { Logger } from "@shared/src/Logger";
 import { Entity, EntityQuery } from "../../ecs/entity";
 import { ColorTag } from "../colorTag";
 import { Vec2 } from "../../math/vec";
-import { lerp } from "../../math/lerp";
+import { lerp, lerpAngle, lerpTransform } from "../../math/lerp";
 import { CLIENT_LERP_RATE } from "../../engine";
 import { TextTag } from "../text/textTag";
+import { createWorldTransform } from "../../scene/sceneGraph";
 
 /**
  * The text sprite creator is used to create text sprites for entities with the TextTag component.
@@ -77,17 +78,14 @@ export default class TextSpriteCreator implements SpriteCreator {
     const colorTag = Entity.getComponentOrNull(e, ColorTag);
     const transform = sceneGraph.getWorldTransform(entity);
 
-    const position = Vec2.lerp(
-      new Vec2(text.position.x, text.position.y),
-      transform.position,
+    const newTransform = lerpTransform(
+      createWorldTransform(text.position, text.rotation, text.scale, text.zIndex, true),
+      transform,
       CLIENT_LERP_RATE
     );
-    text.position.set(position.x, position.y);
-
-    const scale = Vec2.lerp(new Vec2(text.scale.x, -text.scale.y), transform.scale, CLIENT_LERP_RATE);
-    text.scale.set(scale.x, -scale.y);
-
-    text.rotation = lerp(text.rotation, transform.rotation, CLIENT_LERP_RATE);
+    text.position.set(newTransform.position.x, newTransform.position.y);
+    text.scale.set(newTransform.scale.x, -newTransform.scale.y);
+    text.rotation = newTransform.rotation;
     text.zIndex = transform.zIndex;
 
     text.text = textTag.text;

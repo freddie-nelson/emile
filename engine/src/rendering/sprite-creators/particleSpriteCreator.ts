@@ -5,13 +5,13 @@ import { Vec2 } from "../../math/vec";
 import { SpriteCreatorCreate, SpriteCreatorDelete, SpriteCreatorUpdate } from "../renderer";
 import { Container, Graphics, Sprite, Texture, TextureSource } from "pixi.js";
 import Engine, { CLIENT_LERP_RATE } from "../../engine";
-import { lerp, lerpColor } from "../../math/lerp";
+import { lerp, lerpColor, lerpTransform } from "../../math/lerp";
 import vary from "../../math/vary";
 import { map, max, min } from "../../math/clamp";
 import SpriteSpriteCreator, { SpriteImage } from "./spriteSpriteCreator";
 import { Logger } from "@shared/src/Logger";
 import { graphicsToTexture } from "../helpers/texture";
-import { Registry } from "../../ecs/registry";
+import { createWorldTransform } from "../../scene/sceneGraph";
 
 interface ParticleState {
   lifetime: number;
@@ -92,13 +92,14 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     const transform = sceneGraph.getWorldTransform(entity);
     const emitter = Entity.getComponent(e, ParticleEmitter);
 
-    const position = Vec2.lerp(new Vec2(c.position.x, c.position.y), transform.position, CLIENT_LERP_RATE);
-    c.position.set(position.x, position.y);
-
-    const scale = Vec2.lerp(new Vec2(c.scale.x, c.scale.y), transform.scale, CLIENT_LERP_RATE);
-    c.scale.set(scale.x, scale.y);
-
-    c.rotation = lerp(c.rotation, transform.rotation, CLIENT_LERP_RATE);
+    const newTransform = lerpTransform(
+      createWorldTransform(c.position, c.rotation, c.scale, c.zIndex, true),
+      transform,
+      CLIENT_LERP_RATE
+    );
+    c.position.set(newTransform.position.x, newTransform.position.y);
+    c.scale.set(newTransform.scale.x, -newTransform.scale.y);
+    c.rotation = newTransform.rotation;
     c.zIndex = transform.zIndex;
 
     this.updateEmitter(entity, dt, engine);

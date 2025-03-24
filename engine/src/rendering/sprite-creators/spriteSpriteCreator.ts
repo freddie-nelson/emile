@@ -1,14 +1,14 @@
-import { ContainerChild, Assets, Sprite, Texture, Container, TilingSprite, AnimatedSprite } from "pixi.js";
+import { Assets, Sprite, Texture, TilingSprite, AnimatedSprite } from "pixi.js";
 import { SpriteCreator, SpriteCreatorCreate, SpriteCreatorDelete, SpriteCreatorUpdate } from "../renderer";
 import { CircleCollider, ColliderType, RectangleCollider } from "../../physics/collider";
 import { PhysicsWorld } from "../../physics/world";
 import { Transform } from "../../core/transform";
 import { Logger } from "@shared/src/Logger";
 import { Entity, EntityQuery } from "../../ecs/entity";
-import { Vec2 } from "../../math/vec";
-import { lerp } from "../../math/lerp";
+import { lerpTransform } from "../../math/lerp";
 import { CLIENT_LERP_RATE } from "../../engine";
 import { SpriteTag } from "../spriteTag";
+import { createWorldTransform } from "../../scene/sceneGraph";
 
 export enum SpriteImageType {
   SINGLE,
@@ -180,14 +180,16 @@ export default class SpriteSpriteCreator implements SpriteCreator {
       return this.create(data);
     }
 
-    const position = Vec2.lerp(new Vec2(s.position.x, s.position.y), transform.position, CLIENT_LERP_RATE);
-    s.position.set(position.x, position.y);
-
-    const scale = Vec2.lerp(new Vec2(s.scale.x, -s.scale.y), transform.scale, CLIENT_LERP_RATE);
-    s.scale.set(scale.x, -scale.y);
-
-    s.rotation = lerp(s.rotation, transform.rotation, CLIENT_LERP_RATE);
+    const newTransform = lerpTransform(
+      createWorldTransform(s.position, s.rotation, s.scale, s.zIndex, true),
+      transform,
+      CLIENT_LERP_RATE
+    );
+    s.position.set(newTransform.position.x, newTransform.position.y);
+    s.scale.set(newTransform.scale.x, -newTransform.scale.y);
+    s.rotation = newTransform.rotation;
     s.zIndex = transform.zIndex;
+
     s.alpha = spriteTag.opacity;
   };
 

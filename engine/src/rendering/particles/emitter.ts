@@ -161,12 +161,12 @@ export class ParticleEmitter extends Component {
    *
    * - `0` is right
    * - `Math.PI` is left
-   * - `Math.PI / 2` is up
-   * - `-Math.PI / 2` is down
+   * - `-Math.PI / 2` is up
+   * - `Math.PI / 2` is down
    *
-   * @default Math.PI / 2
+   * @default -Math.PI / 2
    */
-  @type("float32") public particleStartDirAngle: number = Math.PI / 2;
+  @type("float32") public particleStartDirAngle: number = -Math.PI / 2;
 
   /**
    * The variance in the initial direction of an emitted particle in radians. This will be used to randomly vary the direction of the particle.

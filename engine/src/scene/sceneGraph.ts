@@ -1,8 +1,11 @@
+import { mat4, quat } from "gl-matrix";
 import { Transform } from "../core/transform";
 import { System, SystemType, SystemUpdateData } from "../ecs/system";
 import { ParentTag } from "./parentTag";
 import Engine from "../engine";
 import { Vec2 } from "../math/vec";
+import { radiansToDegrees } from "../math/angle";
+import { decomposeMat2d } from "../math/mat2d";
 
 export interface WorldTransform {
   position: Vec2;
@@ -11,9 +14,36 @@ export interface WorldTransform {
   zIndex: number;
 }
 
+/**
+ * Creates a new world transform.
+ *
+ * @param position The position of the transform.
+ * @param rotation The rotation of the transform.
+ * @param scale The scale of the transform.
+ * @param zIndex The z-index of the transform.
+ * @param flipYScale Whether to flip the y scale.
+ *
+ * @returns The created world transform.
+ */
+export function createWorldTransform(
+  position: { x: number; y: number },
+  rotation: number,
+  scale: { x: number; y: number },
+  zIndex = 0,
+  flipYScale = false
+): WorldTransform {
+  return {
+    position: new Vec2(position.x, position.y),
+    rotation: rotation,
+    scale: new Vec2(scale.x, flipYScale ? -scale.y : scale.y),
+    zIndex,
+  };
+}
+
 export default class SceneGraph extends System {
   private readonly parents: Map<string, string> = new Map();
   private readonly children: Map<string, Set<string>> = new Map();
+  private readonly matrices: Map<string, mat4> = new Map();
   private readonly transforms: Map<string, WorldTransform> = new Map();
   private readonly engine: Engine;
 
@@ -48,6 +78,7 @@ export default class SceneGraph extends System {
 
     // clear the transform cache
     this.transforms.clear();
+    this.matrices.clear();
   };
 
   public getWorldTransform(entity: string, forceUpdate = false): WorldTransform {
@@ -61,22 +92,12 @@ export default class SceneGraph extends System {
       return transform;
     }
 
-    const parentTransform = this.getWorldTransform(parent, forceUpdate);
-
-    const worldTransform = {
-      position: new Vec2(
-        parentTransform.position.x + transform.position.x,
-        parentTransform.position.y + transform.position.y
-      ),
-      rotation: parentTransform.rotation + transform.rotation,
-      scale: new Vec2(
-        parentTransform.scale.x * transform.scale.x,
-        parentTransform.scale.y * transform.scale.y
-      ),
-      zIndex: transform.zIndex, // we always use the child's zIndex
-    };
-
+    const worldMatrix = this.getWorldMatrix(entity, forceUpdate);
+    const worldTransform = this.matrixToTransform(worldMatrix);
     this.transforms.set(entity, worldTransform);
+
+    // always use entity's z-index
+    worldTransform.zIndex = transform.zIndex;
 
     return worldTransform;
   }
@@ -87,20 +108,73 @@ export default class SceneGraph extends System {
       return worldTransform;
     }
 
-    const parentTransform = this.getWorldTransform(parent);
+    const parentMatrix = this.getWorldMatrix(parent);
+    const invParentMatrix = mat4.create();
+    mat4.invert(invParentMatrix, parentMatrix);
 
-    return {
-      position: new Vec2(
-        worldTransform.position.x - parentTransform.position.x,
-        worldTransform.position.y - parentTransform.position.y
-      ),
-      rotation: worldTransform.rotation - parentTransform.rotation,
-      scale: new Vec2(
-        worldTransform.scale.x / parentTransform.scale.x,
-        worldTransform.scale.y / parentTransform.scale.y
-      ),
-      zIndex: worldTransform.zIndex,
-    };
+    const entityMatrix = this.getWorldMatrix(e);
+    const localMatrix = mat4.create();
+    mat4.multiply(localMatrix, invParentMatrix, entityMatrix);
+
+    return this.matrixToTransform(localMatrix);
+  }
+
+  /**
+   * Gets the world matrix of the given entity.
+   *
+   * @param entity The entity to get the world matrix of.
+   * @param forceUpdate Whether to force an update of the matrix, or use the cached value if it exists.
+   *
+   * @returns The world matrix of the entity.
+   */
+  public getWorldMatrix(entity: string, forceUpdate = false): mat4 {
+    if (!forceUpdate && this.matrices.has(entity)) {
+      return this.matrices.get(entity)!;
+    }
+
+    const transform = this.engine.registry.get(entity, Transform);
+    const mat = this.transformToMatrix(transform);
+
+    const parent = this.getParent(entity);
+    if (!parent) {
+      return mat;
+    }
+
+    const parentMatrix = this.getWorldMatrix(parent, forceUpdate);
+    mat4.multiply(mat, parentMatrix, mat);
+
+    this.matrices.set(entity, mat);
+
+    return mat;
+  }
+
+  /**
+   * Converts the given transform to a matrix.
+   *
+   * @param transform The transform to convert to a matrix.
+   *
+   * @returns The matrix represented by the transform.
+   */
+  public transformToMatrix(transform: Transform | WorldTransform): mat4 {
+    return mat4.fromRotationTranslationScale(
+      mat4.create(),
+      quat.fromEuler(quat.create(), 0, 0, radiansToDegrees(transform.rotation)),
+      [transform.position.x, transform.position.y, 0],
+      [transform.scale.x, transform.scale.y, 1]
+    );
+  }
+
+  /**
+   * Converts the given matrix to a transform.
+   *
+   * @see {@link decomposeMat2d}
+   *
+   * @param matrix The matrix to convert to a transform.
+   *
+   * @returns The transform represented by the matrix.
+   */
+  public matrixToTransform(matrix: mat4): WorldTransform {
+    return decomposeMat2d(matrix);
   }
 
   /**
