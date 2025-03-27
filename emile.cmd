@@ -1,26 +1,63 @@
+:: filepath: c:\Users\fredd\Documents\programming\rocketrumble.online\emile.bat
 @echo off
 
-REM check if cli/dist exists
-IF NOT EXIST "cli\dist" (
-    echo CLI needs built, building CLI...
+:: Check if cli\node_modules exists
+if not exist "cli\node_modules" (
+    echo CLI dependencies need to be installed, installing CLI...
 
-    REM run npm build inside cli
-    npm run build --prefix cli
+    :: Change directory to cli and install dependencies
+    pushd cli
+    pnpm install
 
-    REM check if build failed
-    IF %ERRORLEVEL% NEQ 0 (
-        echo Failed to build CLI
+    :: Check if install failed
+    if errorlevel 1 (
+        echo Failed to install dependencies
+        popd
         exit /b 1
     )
 
-    REM check if dist exists
-    IF NOT EXIST "cli\dist" (
+    :: Check if node_modules exists after installation
+    if not exist "node_modules" (
+        echo Failed to install dependencies
+        popd
+        exit /b 1
+    )
+
+    echo Installed CLI
+    echo Run again to build the CLI
+
+    :: Return to the original directory
+    popd
+)
+
+:: Check if cli\dist exists
+if not exist "cli\dist" (
+    echo CLI needs to be built, building CLI...
+
+    :: Change directory to cli and build
+    pushd cli
+    pnpm run build
+
+    :: Check if build failed
+    if errorlevel 1 (
         echo Failed to build CLI
+        popd
+        exit /b 1
+    )
+
+    :: Check if dist exists after build
+    if not exist "dist" (
+        echo Failed to build CLI
+        popd
         exit /b 1
     )
 
     echo Built CLI
+    echo Run again to run the CLI
+
+    :: Return to the original directory
+    popd
 )
 
-REM run the cli
+:: Run the CLI
 node cli\bin\run.js %*

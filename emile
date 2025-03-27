@@ -1,11 +1,39 @@
 #!/usr/bin/env bash
 
+# check if cli/node_modules exists
+if [ ! -d "cli/node_modules" ]; then
+    echo "CLI dependencies need installed, installing CLI..."
+
+    # run npm install inside cli
+    cd cli
+    pnpm install
+
+    # check if install failed
+    if [ $? -ne 0 ]; then
+        echo "Failed to install dependencies"
+        exit 1
+    fi
+
+    # check if node_modules exists
+    if [ ! -d "cli/node_modules" ]; then
+        echo "Failed to install dependencies"
+        exit 1
+    fi
+
+    echo "Installed CLI"
+    echo "Run again to build the CLI"
+
+    # go back to the original directory
+    cd ..
+fi
+
 # check if cli/dist exists
 if [ ! -d "cli/dist" ]; then
     echo "CLI needs built, building CLI..."
 
     # run npm build inside cli
-    npm run build --prefix cli
+    cd cli
+    pnpm run build
 
     # check if build failed
     if [ $? -ne 0 ]; then
@@ -20,6 +48,10 @@ if [ ! -d "cli/dist" ]; then
     fi
 
     echo "Built CLI"
+    echo "Run again to run the CLI"
+
+    # go back to the original directory
+    cd ..
 fi
 
 # run the cli
