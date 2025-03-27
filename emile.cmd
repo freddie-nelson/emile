@@ -1,20 +1,42 @@
 @echo off
 
-REM check if cli/dist exists
-IF NOT EXIST "cli\dist" (
+:: Check if cli/node_modules exists
+if not exist "cli\node_modules" (
+    echo CLI dependencies need installed, installing CLI...
+
+    :: Run npm install inside cli
+    npm install --prefix cli
+
+    :: Check if install failed
+    if errorlevel 1 (
+        echo Failed to install dependencies
+        exit /b 1
+    )
+
+    :: Check if node_modules exists
+    if not exist "cli\node_modules" (
+        echo Failed to install dependencies
+        exit /b 1
+    )
+
+    echo Installed CLI
+)
+
+:: Check if cli/dist exists
+if not exist "cli\dist" (
     echo CLI needs built, building CLI...
 
-    REM run npm build inside cli
+    :: Run npm build inside cli
     npm run build --prefix cli
 
-    REM check if build failed
-    IF %ERRORLEVEL% NEQ 0 (
+    :: Check if build failed
+    if errorlevel 1 (
         echo Failed to build CLI
         exit /b 1
     )
 
-    REM check if dist exists
-    IF NOT EXIST "cli\dist" (
+    :: Check if dist exists
+    if not exist "cli\dist" (
         echo Failed to build CLI
         exit /b 1
     )
@@ -22,5 +44,5 @@ IF NOT EXIST "cli\dist" (
     echo Built CLI
 )
 
-REM run the cli
+:: Run the CLI
 node cli\bin\run.js %*
