@@ -21,6 +21,8 @@ npm install -g pnpm
 npm install -g degit
 
 # Download the project
+mkdir game
+cd game
 degit https://github.com/freddie-nelson/emile
 ```
 
@@ -29,7 +31,7 @@ degit https://github.com/freddie-nelson/emile
 Navigate into the project directory:
 
 ```bash
-cd emile # Or whatever you named the project
+cd game # Replace with path to your project
 ```
 
 Get set up quickly using the emile CLI:
