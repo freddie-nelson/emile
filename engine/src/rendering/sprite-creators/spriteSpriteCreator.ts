@@ -1,11 +1,11 @@
-import { Assets, Sprite, Texture, TilingSprite, AnimatedSprite } from "pixi.js";
+import { Assets, Sprite, Texture, TilingSprite, AnimatedSprite, Container } from "pixi.js";
 import { SpriteCreator, SpriteCreatorCreate, SpriteCreatorDelete, SpriteCreatorUpdate } from "../renderer";
-import { CircleCollider, ColliderType, RectangleCollider } from "../../physics/collider";
+import { CircleCollider, Collider, ColliderType, RectangleCollider } from "../../physics/collider";
 import { PhysicsWorld } from "../../physics/world";
 import { Transform } from "../../core/transform";
 import { Logger } from "@shared/src/Logger";
 import { Entity, EntityQuery } from "../../ecs/entity";
-import { lerpTransform } from "../../math/lerp";
+import { lerp, lerpTransform } from "../../math/lerp";
 import { CLIENT_LERP_RATE } from "../../engine";
 import { SpriteTag } from "../spriteTag";
 import { createWorldTransform } from "../../scene/sceneGraph";
@@ -73,41 +73,7 @@ export default class SpriteSpriteCreator implements SpriteCreator {
       );
     }
 
-    let width = 0;
-    let height = 0;
-
-    if (!collider) {
-      width = spriteTag.overrideWidth;
-      height = spriteTag.overrideHeight;
-    } else {
-      switch (collider.type) {
-        case ColliderType.CIRCLE: {
-          const circle = collider as CircleCollider;
-          width = circle.radius * 2;
-          height = circle.radius * 2;
-          break;
-        }
-        case ColliderType.RECTANGLE: {
-          const rect = collider as RectangleCollider;
-          width = rect.width;
-          height = rect.height;
-          break;
-        }
-        case ColliderType.POLYGON:
-          // ! TODO: Implement this at some point <3
-          Logger.errorAndThrow("RENDERER", "Polygon colliders are not supported in sprite sprite creator.");
-          break;
-        default:
-          Logger.errorAndThrow(
-            "RENDERER",
-            `Unsupported collider type in sprite sprite creator: ${collider.type}`
-          );
-          break;
-      }
-    }
-
-    width = spriteTag.overrideWidth || width;
-    height = spriteTag.overrideHeight || height;
+    const { width, height } = this.calculateSpriteSize(spriteTag, collider);
 
     const image = this.spriteImageMap.get(spriteTag.spriteType)!;
 
@@ -153,18 +119,24 @@ export default class SpriteSpriteCreator implements SpriteCreator {
         throw new Error("Unreachable code");
     }
 
-    world.addChild(s);
+    const container = new Container();
+    container.addChild(s);
+    world.addChild(container);
 
-    s.position.set(transform.position.x, transform.position.y);
-    s.rotation = transform.rotation;
-    s.scale.set(transform.scale.x, -transform.scale.y);
-    s.zIndex = transform.zIndex;
-    s.alpha = spriteTag.opacity;
+    container.position.set(transform.position.x, transform.position.y);
+    container.rotation = transform.rotation;
+    container.scale.set(transform.scale.x, -transform.scale.y);
+    container.zIndex = transform.zIndex;
+    container.pivot.set(container.width / 2, container.height / 2);
+
     s.anchor.set(0.5);
+    s.position.set(container.width / 2, container.height / 2);
+
+    container.alpha = spriteTag.opacity;
 
     this.createdSpriteTypeMap.set(entity, spriteTag.spriteType);
 
-    return s;
+    return container;
   };
 
   public readonly update: SpriteCreatorUpdate = (data) => {
@@ -186,9 +158,12 @@ export default class SpriteSpriteCreator implements SpriteCreator {
       CLIENT_LERP_RATE
     );
     s.position.set(newTransform.position.x, newTransform.position.y);
-    s.scale.set(newTransform.scale.x, -newTransform.scale.y);
     s.rotation = newTransform.rotation;
+    s.scale.set(newTransform.scale.x, -newTransform.scale.y);
     s.zIndex = transform.zIndex;
+
+    s.pivot.set(s.width / 2, s.height / 2);
+    s.children[0].position.set(s.width / 2, s.height / 2);
 
     s.alpha = spriteTag.opacity;
   };
@@ -240,5 +215,48 @@ export default class SpriteSpriteCreator implements SpriteCreator {
 
   protected getTextureArray(image: string[]) {
     return image.map((i) => this.textureCache.get(i)!);
+  }
+
+  protected calculateSpriteSize(spriteTag: SpriteTag, collider: Collider | null = null) {
+    let width = 0;
+    let height = 0;
+
+    if (!collider) {
+      width = spriteTag.overrideWidth;
+      height = spriteTag.overrideHeight;
+    } else {
+      switch (collider.type) {
+        case ColliderType.CIRCLE: {
+          const circle = collider as CircleCollider;
+          width = circle.radius * 2;
+          height = circle.radius * 2;
+          break;
+        }
+        case ColliderType.RECTANGLE: {
+          const rect = collider as RectangleCollider;
+          width = rect.width;
+          height = rect.height;
+          break;
+        }
+        case ColliderType.POLYGON:
+          // ! TODO: Implement this at some point <3
+          Logger.errorAndThrow("RENDERER", "Polygon colliders are not supported in sprite sprite creator.");
+          break;
+        default:
+          Logger.errorAndThrow(
+            "RENDERER",
+            `Unsupported collider type in sprite sprite creator: ${collider.type}`
+          );
+          break;
+      }
+    }
+
+    width = spriteTag.overrideWidth || width;
+    height = spriteTag.overrideHeight || height;
+
+    return {
+      width,
+      height,
+    };
   }
 }
