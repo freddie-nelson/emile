@@ -1,4 +1,3 @@
-import {spawn, SpawnOptions} from 'child_process'
 import {join} from 'path'
 import {pnpmCommand, runCommand} from './run.js'
 import {existsSync, rmdirSync} from 'fs'
