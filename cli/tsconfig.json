@@ -5,7 +5,7 @@
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
-    "target": "es2022",
+    "target": "ESNext",
     "moduleResolution": "node16"
   },
   "include": ["./src/**/*"],

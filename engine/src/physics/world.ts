@@ -5,13 +5,23 @@ import { Transform } from "../core/transform";
 import { Vec2 } from "../math/vec";
 import { Entity } from "../ecs/entity";
 import { System, SystemType, SystemUpdateData } from "../ecs/system";
-import Matter from "matter-js";
+import Matter, { Body, Collision } from "matter-js";
 import { Constraint } from "./constraint";
 import { Logger } from "@shared/src/Logger";
 import { Registry } from "../ecs/registry";
-import raycast, { RayCol } from "./raycast";
+import raycast, { RayCol, RayColSimple } from "./raycast";
 import SceneGraph from "../scene/sceneGraph";
 import World from "../scene/world";
+import { EngineType } from "../engine";
+
+export interface QueryResult {
+  body: TypedBody;
+  entity: string;
+}
+
+export interface QueryResultWithCollision extends QueryResult {
+  collision: Collision;
+}
 
 export interface PhysicsWorldOptions {
   gravity: Vec2;
@@ -19,6 +29,7 @@ export interface PhysicsWorldOptions {
   velocityIterations: number;
   slop: number;
   world: World;
+  runOnClient: boolean;
 }
 
 /**
@@ -27,6 +38,15 @@ export interface PhysicsWorldOptions {
  * The physics world has a system priority of 0. You can give your systems a higher priority to run before the physics world.
  */
 export class PhysicsWorld extends System {
+  /**
+   * This is the scaling factor applied to the gravity force.
+   *
+   * This allows you to use reasonable values for gravity in your game (e.g. 9.81) and have them converted to the very small force values for the physics engine.
+   *
+   * You don't need to change this, just change the gravity in the physics world options.
+   */
+  public static readonly GRAVITY_FORCE_SCALE = 1 / 800000;
+
   public static getCollider(entity: Entity): Collider | null {
     if (Entity.hasComponent(entity, RectangleCollider)) {
       return Entity.getComponent(entity, RectangleCollider);
@@ -42,6 +62,7 @@ export class PhysicsWorld extends System {
   private readonly engine: Matter.Engine;
   private readonly bodies: Map<string, TypedBody> = new Map();
   private readonly matterBodies: Map<TypedBody, string> = new Map();
+  private readonly lastCollider: Map<string, Collider | null> = new Map();
   private readonly constraints: Map<string, Matter.Constraint> = new Map();
   private readonly options: PhysicsWorldOptions;
   private readonly collisionEvents: Map<ColliderEvent, Matter.Pair[]> = new Map();
@@ -55,22 +76,31 @@ export class PhysicsWorld extends System {
    * @param options The options for the physics world.
    */
   constructor(options: PhysicsWorldOptions) {
-    super(SystemType.SERVER_AND_CLIENT, new Set([Transform, Rigidbody]), 0);
+    super(SystemType.SERVER_AND_CLIENT, new Set([Transform, Rigidbody]), 0, true);
 
-    this.options = options;
-    this.registry = options.world.registry;
-    this.sceneGraph = options.world.sceneGraph;
+    this.options = { ...options };
+    this.registry = this.options.world.registry;
+    this.sceneGraph = this.options.world.sceneGraph;
 
     this.engine = Matter.Engine.create({
       positionIterations: options.positionIterations,
       velocityIterations: options.velocityIterations,
+      gravity: {
+        x: 0,
+        y: 0,
+      },
     });
-    this.setGravity(options.gravity);
+    this.setGravity(this.options.gravity);
 
     this.setupMatterEvents();
   }
 
-  public fixedUpdate = ({ registry, entities, dt }: SystemUpdateData) => {
+  public fixedUpdate = ({ engine, registry, entities, dt }: SystemUpdateData) => {
+    // if the engine is a client, we don't need to run the physics world (this is handled by the server)
+    if (engine.type === EngineType.CLIENT && !this.options.runOnClient) {
+      return;
+    }
+
     // deletion step
     for (const entity of this.bodies.keys()) {
       // body no longer has required components for physics
@@ -102,10 +132,14 @@ export class PhysicsWorld extends System {
 
       const rigidbody = Entity.getComponent(e, Rigidbody);
       const collider = PhysicsWorld.getCollider(e);
+      const lastCollider = this.lastCollider.get(entity);
+      this.lastCollider.set(entity, collider);
 
       const bodyNeedsCreated =
         !Rigidbody.getBody(rigidbody) ||
         (collider && !Collider.getBody(collider)) ||
+        (!collider && lastCollider) ||
+        (collider && !lastCollider) ||
         !this.matterBodies.has(Rigidbody.getBody(rigidbody)!) ||
         collider?.type !== Rigidbody.getBody(rigidbody)!.plugin!.colliderType;
 
@@ -130,11 +164,15 @@ export class PhysicsWorld extends System {
         Matter.Body.setAngularVelocity(body, rigidbody.angularVelocity);
       }
 
+      if (rigidbody.gravityScale !== body.plugin!.gravityScale) {
+        body.plugin!.gravityScale = rigidbody.gravityScale;
+      }
+
       // update from transform
       const transform = this.sceneGraph.getWorldTransform(e.id);
 
       if (transform.position.x !== body.position.x || transform.position.y !== body.position.y) {
-        Matter.Body.setPosition(body, { x: transform.position.x, y: transform.position.y });
+        Matter.Body.setPosition(body, transform.position);
       }
       if (transform.rotation !== body.angle) {
         Matter.Body.setAngle(body, transform.rotation);
@@ -167,12 +205,25 @@ export class PhysicsWorld extends System {
         if (!registry.has(constraint.entityBId)) {
           Logger.errorAndThrow(
             "CORE",
-            `Entity B with id '${constraint.entityBId}' does not exist for constraint.`
+            `Entity B with id '${constraint.entityBId}' does not exist for constraint.`,
           );
         }
 
         this.createConstraint(e, registry.get(constraint.entityBId));
       }
+    }
+
+    // apply gravity
+    for (const body of this.bodies.values()) {
+      const gravityScale = body.plugin?.gravityScale ?? 1;
+      if (!gravityScale) {
+        continue;
+      }
+
+      Body.applyForce(body, body.position, {
+        x: this.options.gravity.x * body.mass * gravityScale * PhysicsWorld.GRAVITY_FORCE_SCALE,
+        y: this.options.gravity.y * body.mass * gravityScale * PhysicsWorld.GRAVITY_FORCE_SCALE,
+      });
     }
 
     // update step
@@ -218,8 +269,7 @@ export class PhysicsWorld extends System {
    * @param gravity The gravity to set.
    */
   public setGravity(gravity: Vec2) {
-    this.engine.gravity.x = gravity.x;
-    this.engine.gravity.y = gravity.y;
+    this.options.gravity = gravity;
   }
 
   /**
@@ -228,7 +278,7 @@ export class PhysicsWorld extends System {
    * @returns The gravity of the physics world.
    */
   public getGravity() {
-    return new Vec2(this.engine.gravity.x, this.engine.gravity.y);
+    return this.options.gravity;
   }
 
   /**
@@ -236,10 +286,11 @@ export class PhysicsWorld extends System {
    *
    * @param start The start of the ray.
    * @param end The end of the ray.
+   * @param entities The entities to query. Optional. Defaults to all physics entities. Can improve performance if you only want to check a subset of entities.
    *
    * @returns The bodies that intersect with the ray.
    */
-  public queryRay(start: Vec2, end: Vec2): RayCol[];
+  public queryRay(start: Vec2, end: Vec2, entities?: Iterable<string>): RayCol[];
 
   /**
    * Queries the world for bodies that intersect with a ray.
@@ -247,17 +298,142 @@ export class PhysicsWorld extends System {
    * @param origin The origin of the ray.
    * @param dir The direction of the ray.
    * @param len The length of the ray.
+   * @param entities The entities to query. Optional. Defaults to all physics entities. Can improve performance if you only want to check a subset of entities.
    *
    * @returns The bodies that intersect with the ray.
    */
-  public queryRay(origin: Vec2, dir: Vec2, len: number): RayCol[];
+  public queryRay(origin: Vec2, dir: Vec2, len: number, entities?: Iterable<string>): RayCol[];
 
-  public queryRay(origin: Vec2, dir: Vec2, len?: number) {
+  public queryRay(
+    origin: Vec2,
+    dir: Vec2,
+    len?: number | Iterable<string>,
+    entities?: Iterable<string>,
+  ): RayCol[] {
     if (typeof len === "number") {
-      return this.queryRay(origin, Vec2.add(origin, Vec2.mul(dir, len)));
+      return this.queryRay(origin, Vec2.add(origin, Vec2.mul(dir, len)), entities);
     } else {
-      return raycast(Array.from(this.bodies.values()), origin, dir);
+      let bodies = [];
+      if (len) {
+        for (const entity of len) {
+          if (this.bodies.has(entity)) {
+            bodies.push(this.bodies.get(entity)!);
+          }
+        }
+      } else {
+        bodies = this.engine.world.bodies;
+      }
+
+      return raycast(bodies, origin, dir);
     }
+  }
+
+  /**
+   * Queries the world for bodies that intersect with a ray.
+   *
+   * This is a quick version of the queryRay method that does not return intersection information.
+   *
+   * @param origin The origin of the ray.
+   * @param dir The direction of the ray.
+   * @param len The length of the ray.
+   * @param entities The entities to query. Optional. Defaults to all physics entities. Can improve performance if you only want to check a subset of entities.
+   */
+  public queryRayQuick(origin: Vec2, dir: Vec2, len: number, entities?: Iterable<string>): RayColSimple[];
+
+  /**
+   * Queries the world for bodies that intersect with a ray.
+   *
+   * This is a quick version of the queryRay method that does not return intersection information.
+   *
+   * @param start The start of the ray.
+   * @param end The end of the ray.
+   * @param entities The entities to query. Optional. Defaults to all physics entities. Can improve performance if you only want to check a subset of entities.
+   */
+  public queryRayQuick(start: Vec2, end: Vec2, entities?: Iterable<string>): RayColSimple[];
+
+  public queryRayQuick(
+    origin: Vec2,
+    dir: Vec2,
+    len?: number | Iterable<string>,
+    entities?: Iterable<string>,
+  ): RayColSimple[] {
+    if (typeof len === "number") {
+      return this.queryRayQuick(origin, Vec2.add(origin, Vec2.mul(dir, len)), entities);
+    } else {
+      let bodies = [];
+      if (len) {
+        for (const entity of len) {
+          if (this.bodies.has(entity)) {
+            bodies.push(this.bodies.get(entity)!);
+          }
+        }
+      } else {
+        bodies = this.engine.world.bodies;
+      }
+
+      const res = Matter.Query.ray(bodies, origin, dir);
+      // console.log(res.length, bodies.length, origin.x, origin.y, dir.x, dir.y);
+
+      return res.map((c) => new RayColSimple(c.bodyA, c.normal)).filter((c) => c.entity);
+    }
+  }
+
+  /**
+   * Queries the world for bodies that intersect with a circle.
+   *
+   * @param center The center of the circle.
+   * @param radius The radius of the circle.
+   *
+   * @returns The bodies that intersect with the circle.
+   */
+  public queryCircle(center: Vec2, radius: number): QueryResultWithCollision[] {
+    const circle = Matter.Bodies.circle(center.x, center.y, radius, {
+      isSensor: true,
+      isStatic: true,
+    });
+
+    const res = Matter.Query.collides(circle, this.engine.world.bodies)
+      .filter(
+        (c) =>
+          (c.bodyA as TypedBody).plugin?.entity && this.registry.has((c.bodyA as TypedBody).plugin!.entity!),
+      )
+      .map((c) => {
+        return {
+          body: c.bodyA as TypedBody,
+          entity: c.bodyA.plugin!.entity,
+          collision: c,
+        };
+      });
+
+    Matter.World.remove(this.engine.world, circle);
+
+    return res;
+  }
+
+  /**
+   * Queries the world for bodies that are inside an AABB.
+   *
+   * @param min The minimum point of the AABB.
+   * @param max The maximum point of the AABB.
+   *
+   * @returns The bodies that intersect with the AABB.
+   */
+  public queryAABB(min: Vec2, max: Vec2): QueryResult[] {
+    const aabb = Matter.Bounds.create([
+      new Vec2(min.x, min.y),
+      new Vec2(min.x, max.y),
+      new Vec2(max.x, min.y),
+      new Vec2(max.x, max.y),
+    ]);
+
+    return Matter.Query.region(this.engine.world.bodies, aabb)
+      .filter((b) => (b as TypedBody).plugin?.entity && this.registry.has((b as TypedBody).plugin!.entity!))
+      .map((b) => {
+        return {
+          body: b as TypedBody,
+          entity: (b as TypedBody).plugin!.entity!,
+        };
+      });
   }
 
   private createBody(entity: Entity) {
@@ -271,7 +447,9 @@ export class PhysicsWorld extends System {
       const c = Entity.getComponent(entity, RectangleCollider);
       collider = c;
 
-      body = Matter.Bodies.rectangle(transform.position.x, transform.position.y, c.width, c.height);
+      body = Matter.Bodies.rectangle(transform.position.x, transform.position.y, c.width, c.height, {
+        isSensor: c.isSensor,
+      });
 
       body.plugin = {};
       body.plugin.rectangleWidth = c.width;
@@ -280,7 +458,9 @@ export class PhysicsWorld extends System {
       const c = Entity.getComponent(entity, CircleCollider);
       collider = c;
 
-      body = Matter.Bodies.circle(transform.position.x, transform.position.y, c.radius);
+      body = Matter.Bodies.circle(transform.position.x, transform.position.y, c.radius, {
+        isSensor: c.isSensor,
+      });
 
       body.plugin = {};
       body.plugin.circleRadius = c.radius;
@@ -288,14 +468,21 @@ export class PhysicsWorld extends System {
       const c = Entity.getComponent(entity, PolygonCollider);
       collider = c;
 
-      body = Matter.Bodies.fromVertices(transform.position.x, transform.position.y, [
-        c.vertices.map((v) => Vec2.copy(v)),
-      ]);
+      body = Matter.Bodies.fromVertices(
+        transform.position.x,
+        transform.position.y,
+        [c.vertices.map((v) => Vec2.copy(v))],
+        {
+          isSensor: c.isSensor,
+        },
+      );
 
       body.plugin = {};
       body.plugin.polygonVertices = c.vertices.map((v) => Vec2.copy(v));
     } else {
-      body = Matter.Bodies.circle(transform.position.x, transform.position.y, 0.1);
+      body = Matter.Bodies.circle(transform.position.x, transform.position.y, 0.1, {
+        isSensor: true,
+      });
       body.plugin = {};
     }
 
@@ -304,6 +491,7 @@ export class PhysicsWorld extends System {
     body.plugin.entity = entity.id;
     body.plugin.colliderType = collider?.type;
     body.plugin.bodyScale = Vec2.copy(transform.scale);
+    body.plugin.gravityScale = rigidbody.gravityScale;
 
     body.slop = this.options.slop;
 
@@ -330,6 +518,7 @@ export class PhysicsWorld extends System {
 
     this.bodies.set(entity.id, body);
     this.matterBodies.set(body, entity.id);
+    this.lastCollider.set(entity.id, collider);
 
     Matter.World.add(this.engine.world, body);
   }
@@ -363,6 +552,7 @@ export class PhysicsWorld extends System {
     Matter.World.remove(this.engine.world, this.bodies.get(entity)!);
     this.matterBodies.delete(this.bodies.get(entity)!);
     this.bodies.delete(entity);
+    this.lastCollider.delete(entity);
   }
 
   private deleteConstraint(entity: string) {

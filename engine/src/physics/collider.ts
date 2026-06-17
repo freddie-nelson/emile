@@ -24,6 +24,10 @@ export enum ColliderEvent {
  * Represents a collision callback.
  *
  * @note Entity a will always be the entity that has the collider the callback is attached to.
+ *
+ * @param pair The matter pair.
+ * @param a The entity owning the collider / this callback.
+ * @param b The other entity. (This is the entity that collided with the collider)
  */
 export type CollisionCallback = (pair: Matter.Pair, a: Entity, b: Entity) => void;
 
@@ -50,9 +54,9 @@ export abstract class Collider extends Component {
 
   @type("int8") public type: ColliderType;
   @type("boolean") public isSensor: boolean = false;
-  @type("int32") public group: number = 0;
+  @type("float64") public group: number = 0;
   @type("uint32") public category: number = 1;
-  @type("int32") public mask: number = 4294967295;
+  @type("uint32") public mask: number = 4294967295;
 
   /**
    * The matter body of the collider.
@@ -181,11 +185,7 @@ export abstract class Collider extends Component {
    * @param b The second entity
    */
   public static fire(collider: Collider, event: ColliderEvent, pair: Matter.Pair, a: Entity, b: Entity) {
-    if (!collider.collisionCallbacks) {
-      collider.collisionCallbacks = new Map();
-    }
-
-    if (!collider.collisionCallbacks.has(event)) {
+    if (!collider.collisionCallbacks || !collider.collisionCallbacks.has(event)) {
       return;
     }
 

@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "rootDir": "..",
     "outDir": "build",
     "target": "ESNext",
     "module": "CommonJS",
@@ -16,8 +17,9 @@
 
     "baseUrl": ".",
     "paths": {
-      "@engine/*": ["../engine/*"]
+      "@engine/*": ["../engine/*"],
+      "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src", "../engine"]
+  "include": ["src", "../engine", "../shared"]
 }

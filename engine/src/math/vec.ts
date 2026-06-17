@@ -54,6 +54,10 @@ export class Vec2 extends Schema {
     return new Vec2(v.x + vec.x, v.y + vec.y);
   }
 
+  public static scaleAndAdd(v: Vec2, vec: Vec2, scalar: number): Vec2 {
+    return new Vec2(v.x + vec.x * scalar, v.y + vec.y * scalar);
+  }
+
   public static sub(v: Vec2, vec: Vec2): Vec2 {
     return new Vec2(v.x - vec.x, v.y - vec.y);
   }
@@ -130,6 +134,10 @@ export class Vec2 extends Schema {
 
   public static equals(v: Vec2, vec: Vec2): boolean {
     return v.x === vec.x && v.y === vec.y;
+  }
+
+  public static dirTo(v: Vec2, b: Vec2): Vec2 {
+    return Vec2.normalize(Vec2.sub(b, v));
   }
 
   public static toString(v: Vec2) {

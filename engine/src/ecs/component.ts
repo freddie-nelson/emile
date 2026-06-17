@@ -37,7 +37,7 @@ export type ComponentConstructor = new (...args: any[]) => Component;
 export type GenericComponentConstructor<T extends Component> = new (...args: any[]) => T;
 
 export function getComponentIdFromConstructor<T extends Component>(
-  component: GenericComponentConstructor<T>
+  component: GenericComponentConstructor<T>,
 ): string {
   const id = (component as any)["COMPONENT_ID"] as number;
   if (typeof id !== "number") {
@@ -51,7 +51,7 @@ export function getComponentIdFromInstance(component: Component): string {
   const id = component.componentId;
   if (typeof id !== "number") {
     throw new Error(
-      `${component.constructor.name} component instance does not have a valid componentId got '${id}' expected number.`
+      `${component.constructor.name} component instance does not have a valid componentId got '${id}' expected number.`,
     );
   }
 

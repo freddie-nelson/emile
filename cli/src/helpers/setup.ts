@@ -1,9 +1,9 @@
 import {spawn, SpawnOptions} from 'child_process'
 import {join} from 'path'
 import {pnpmCommand, runCommand} from './run.js'
-import {rmdirSync} from 'fs'
+import {existsSync, rmdirSync} from 'fs'
 
-const requiredVersion = 'v20.11.1'
+const requiredVersion = 'v22.22.3'
 
 const checkNodeVersion = async () => {
   console.log('[DEV] Checking Node.js version...')
@@ -76,8 +76,14 @@ export default async function setup(depsOnly: boolean, keepDocs: boolean) {
 
   if (!keepDocs) {
     console.log('[DEV] Removing docs folder...')
-    await rmdirSync(join(process.cwd(), 'docs'), {recursive: true})
-    console.log('[DEV] Docs folder removed.')
+
+    const docsPath = join(process.cwd(), 'docs')
+    if (!existsSync(docsPath)) {
+      console.log('[DEV] Docs does not exist, skipping...')
+    } else {
+      await rmdirSync(docsPath, {recursive: true})
+      console.log('[DEV] Docs folder removed.')
+    }
   } else {
     console.log('[DEV] Keeping docs folder.')
   }

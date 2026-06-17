@@ -5,6 +5,8 @@ import Engine, { EngineOptions, EngineType, engineTypeToRegistryType } from "../
 import SceneManager from "./sceneManager";
 import { Renderer } from "../rendering/renderer";
 import { Logger } from "@shared/src/Logger";
+import ParticleEmitterSystem from "../rendering/particles/emitterSystem";
+import { AudioSystem } from "../audio/audioSystem";
 
 /**
  * The world class contains all the components that make up a game world.
@@ -20,12 +22,13 @@ export default class World {
   public readonly registry: Registry;
   public readonly sceneGraph: SceneGraph;
   public readonly physics: PhysicsWorld;
+  public readonly audioSystem: AudioSystem;
 
   public get renderer() {
     if (this.engine.type !== EngineType.CLIENT) {
       Logger.errorAndThrow(
         "WORLD",
-        "Cannot get renderer on server side, this is only available to the client."
+        "Cannot get renderer on server side, this is only available to the client.",
       );
     }
 
@@ -50,14 +53,20 @@ export default class World {
     this.sceneGraph = new SceneGraph(engine);
     this.registry.addSystem(this.sceneGraph);
 
+    this.audioSystem = new AudioSystem();
+    this.registry.addSystem(this.audioSystem);
+
     this.physics = new PhysicsWorld({
       positionIterations: options.positionIterations,
       velocityIterations: options.velocityIterations,
       gravity: options.gravity,
       slop: options.colliderSlop,
       world: this,
+      runOnClient: options.runPhysicsOnClient,
     });
     this.registry.addSystem(this.physics);
+
+    this.registry.addSystem(new ParticleEmitterSystem());
   }
 
   /**

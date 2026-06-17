@@ -4,7 +4,6 @@ import World from "./world";
 import { State } from "@state/src/state";
 import { MapSchema } from "@colyseus/schema";
 import { Entity } from "../ecs/entity";
-import { Renderer } from "../rendering/renderer";
 
 export type SceneName = string;
 
@@ -202,11 +201,7 @@ export default class SceneManager {
       // doesn't remove entities as they are stored in the state which is fresh from server
       this.engine.world.dispose();
       this.engine.registry.getSystems().forEach((system) => {
-        if (
-          system === this.engine.world.physics ||
-          system === this.engine.world.sceneGraph ||
-          system instanceof Renderer
-        ) {
+        if (system.keepOnClientSceneSwitch) {
           return;
         }
 
@@ -236,7 +231,7 @@ export default class SceneManager {
       this.engine.world.dispose();
       this.interface.setWorld(world);
 
-      s.onLoad(world, state);
+      s.onLoad(world, this.engine.state);
 
       this.fireOnSceneChange(scene);
     }

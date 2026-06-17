@@ -1,17 +1,18 @@
-import { Color, ColorSource, Container, ContainerChild, Graphics, Text } from "pixi.js";
-import { SpriteCreator, SpriteCreatorCreate, SpriteCreatorDelete, SpriteCreatorUpdate } from "../renderer";
-import { Rigidbody } from "../../physics/rigidbody";
-import { CircleCollider, ColliderType, PolygonCollider, RectangleCollider } from "../../physics/collider";
-import { PhysicsWorld } from "../../physics/world";
+import {
+  ContainerChild,
+  Text,
+  TextStyleFontWeight,
+  TextStyleOptions,
+} from "pixi.js";
+import { SpriteCreator, SpriteCreatorData } from "../renderer";
 import { Transform } from "../../core/transform";
-import { Logger } from "@shared/src/Logger";
-import { Entity, EntityQuery } from "../../ecs/entity";
+import { Entity } from "../../ecs/entity";
 import { ColorTag } from "../colorTag";
-import { Vec2 } from "../../math/vec";
-import { lerp, lerpAngle, lerpTransform } from "../../math/lerp";
+import { lerpTransform } from "../../math/lerp";
 import { CLIENT_LERP_RATE } from "../../engine";
 import { TextTag } from "../text/textTag";
 import { createWorldTransform } from "../../scene/sceneGraph";
+import { StrokeTag } from "../strokeTag";
 
 /**
  * The text sprite creator is used to create text sprites for entities with the TextTag component.
@@ -26,9 +27,7 @@ import { createWorldTransform } from "../../scene/sceneGraph";
  *
  * @note This creator is not used by the engine by default. You must add it to the renderer to use it.
  */
-export default class TextSpriteCreator implements SpriteCreator {
-  public readonly query: EntityQuery = new Set([Transform, TextTag]);
-
+export default class TextSpriteCreator extends SpriteCreator {
   private readonly defaultColor: number = 0xffffff;
 
   /**
@@ -37,14 +36,17 @@ export default class TextSpriteCreator implements SpriteCreator {
    * @param defaultColor The default color of the text. This is used if the entity does not have a {@link ColorTag} component.
    */
   constructor(defaultColor: number = 0xffffff) {
+    super(new Set([Transform, TextTag]));
+
     this.defaultColor = defaultColor;
   }
 
-  public readonly create: SpriteCreatorCreate = ({ registry, sceneGraph, world, entity }) => {
+  public create({ registry, sceneGraph, world, entity }: SpriteCreatorData): ContainerChild {
     const e = registry.get(entity);
 
     const textTag = Entity.getComponent(e, TextTag);
     const colorTag = Entity.getComponentOrNull(e, ColorTag);
+    const strokeTag = Entity.getComponentOrNull(e, StrokeTag);
     const transform = sceneGraph.getWorldTransform(entity);
 
     const text = new Text({
@@ -52,9 +54,18 @@ export default class TextSpriteCreator implements SpriteCreator {
       style: {
         fontFamily: textTag.font,
         fontSize: textTag.size,
+        fontWeight: textTag.weight as TextStyleFontWeight,
         fill: colorTag ? colorTag.color : this.defaultColor,
-      },
+        stroke: strokeTag
+          ? {
+              color: strokeTag.color,
+              width: strokeTag.thickness,
+            }
+          : undefined,
+      } as TextStyleOptions,
     });
+
+    text.alpha = colorTag ? colorTag.opacity : 1;
 
     text.position.set(transform.position.x, transform.position.y);
     text.rotation = transform.rotation;
@@ -66,9 +77,9 @@ export default class TextSpriteCreator implements SpriteCreator {
     world.addChild(text);
 
     return text;
-  };
+  }
 
-  public readonly update: SpriteCreatorUpdate = (data) => {
+  public update(data: SpriteCreatorData): ContainerChild | void {
     const { registry, sceneGraph, entity, sprite } = data;
 
     const e = registry.get(entity);
@@ -76,12 +87,13 @@ export default class TextSpriteCreator implements SpriteCreator {
 
     const textTag = Entity.getComponent(e, TextTag);
     const colorTag = Entity.getComponentOrNull(e, ColorTag);
+    const strokeTag = Entity.getComponentOrNull(e, StrokeTag);
     const transform = sceneGraph.getWorldTransform(entity);
 
     const newTransform = lerpTransform(
       createWorldTransform(text.position, text.rotation, text.scale, text.zIndex, true),
       transform,
-      CLIENT_LERP_RATE
+      CLIENT_LERP_RATE,
     );
     text.position.set(newTransform.position.x, newTransform.position.y);
     text.scale.set(newTransform.scale.x, -newTransform.scale.y);
@@ -91,11 +103,24 @@ export default class TextSpriteCreator implements SpriteCreator {
     text.text = textTag.text;
     text.style.fontFamily = textTag.font;
     text.style.fontSize = textTag.size;
+    text.style.fontWeight = textTag.weight as TextStyleFontWeight;
     text.style.fill = colorTag ? colorTag.color : this.defaultColor;
-  };
+    text.alpha = colorTag ? colorTag.opacity : 1;
 
-  public readonly delete: SpriteCreatorDelete = ({ registry, app, entity, sprite }, replacing) => {
+    if (strokeTag) {
+      text.style.stroke = {
+        color: strokeTag.color,
+        width: strokeTag.thickness,
+      };
+    }
+  }
+
+  public delete({ registry, app, entity, sprite }: SpriteCreatorData, replacing: boolean): void {
     sprite!.removeFromParent();
     sprite!.destroy();
-  };
+  }
+
+  public dispose(): void {
+    // No resources to dispose
+  }
 }

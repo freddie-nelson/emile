@@ -48,7 +48,7 @@ export default class SceneGraph extends System {
   private readonly engine: Engine;
 
   constructor(engine: Engine) {
-    super(SystemType.SERVER_AND_CLIENT, new Set([Transform, ParentTag]), 1000);
+    super(SystemType.SERVER_AND_CLIENT, new Set([Transform, ParentTag]), 1000, true);
 
     this.engine = engine;
   }

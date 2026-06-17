@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "rootDir": "..",
+    "target": "ESNext",
     "useDefineForClassFields": false,
     "experimentalDecorators": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -13,7 +14,7 @@
     // "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
-    // "noEmit": true,
+    "noEmit": true,
     "jsx": "react-jsx",
     "outDir": "dist",
 
@@ -29,7 +30,7 @@
 
     /* Linting */
     "strict": true,
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },

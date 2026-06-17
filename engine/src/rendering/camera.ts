@@ -12,7 +12,7 @@ const defaultCameraOptions: CameraOptions = {
   worldCentre: new Vec2(0, 0),
   zoom: 1,
   target: null,
-  smoothing: 0.1,
+  smoothing: 0.7,
 };
 
 export class Camera {
@@ -24,7 +24,7 @@ export class Camera {
 
   public update(dt: number) {
     if (this.options.target) {
-      let targetPos =
+      const targetPos =
         this.options.target instanceof Vec2
           ? this.options.target
           : new Vec2(this.options.target.x, this.options.target.y);
@@ -32,7 +32,7 @@ export class Camera {
       this.options.worldCentre = Vec2.lerp(
         this.options.worldCentre,
         new Vec2(targetPos.x, targetPos.y),
-        this.options.smoothing
+        1 - this.options.smoothing
       );
     }
   }

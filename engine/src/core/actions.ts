@@ -18,7 +18,7 @@ export class ActionsManager<T> {
    *
    * @param action The action to enqueue.
    * @param data The data for the action.
-   * @param delay The delay in milliseconds before enqueueing the action, this is useful to simulate sending the action to the server on the client.
+   * @param delay The delay in milliseconds before enqueueing the action, this is useful to simulate sending the action to the server on the client. (uses `setTimeout`)
    */
   public enqueue(action: T, data: any, delay?: number) {
     if (delay) {

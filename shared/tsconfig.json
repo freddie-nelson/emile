@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "rootDir": "..",
     "outDir": "build",
     "target": "ESNext",
     "module": "CommonJS",
@@ -20,5 +21,5 @@
       "@game/*": ["../game/*"]
     }
   },
-  "include": ["src", "../engine", "../game"]
+  "include": ["src", "../engine", "../game", "../state/src/profanity.ts"]
 }

@@ -1,6 +1,5 @@
 import Matter from "matter-js";
 import { TypedBody } from "../matter";
-import { Entity } from "../ecs/entity";
 import { Vec2 } from "../math/vec";
 
 /**
@@ -61,12 +60,29 @@ export class RayCol {
    * @param {vec2} normal - The normal of the edge that the ray collides with.
    * @param {vec2[]} verts - The vertices of the edge that the ray collides with.
    */
-  constructor(body: TypedBody, point: vec2, normal: vec2, verts: vec2[]) {
+  constructor(
+    body: TypedBody,
+    point: { x: number; y: number },
+    normal: { x: number; y: number },
+    verts: Vec2[] | vec2[]
+  ) {
     this.body = body;
     this.point = new Vec2(point.x, point.y);
     this.normal = new Vec2(normal.x, normal.y);
     this.verts = verts.map((v) => new Vec2(v.x, v.y));
     this.entity = body.plugin?.entity ?? "";
+  }
+}
+
+export class RayColSimple {
+  body: TypedBody;
+  entity: string;
+  normal: Vec2;
+
+  constructor(body: TypedBody, normal: { x: number; y: number }) {
+    this.body = body;
+    this.entity = body.plugin?.entity ?? "";
+    this.normal = new Vec2(normal.x, normal.y);
   }
 }
 

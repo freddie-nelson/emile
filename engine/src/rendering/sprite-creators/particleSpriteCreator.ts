@@ -1,9 +1,9 @@
-import { Entity, EntityQuery } from "../../ecs/entity";
+import { Entity } from "../../ecs/entity";
 import { Transform } from "../../core/transform";
 import { ParticleEmitter, ParticleType } from "../particles/emitter";
 import { Vec2 } from "../../math/vec";
-import { SpriteCreatorCreate, SpriteCreatorDelete, SpriteCreatorUpdate } from "../renderer";
-import { Container, Graphics, Sprite, Texture, TextureSource } from "pixi.js";
+import { SpriteCreatorData } from "../renderer";
+import { Container, ContainerChild, Graphics, Sprite, Texture, TextureSource } from "pixi.js";
 import Engine, { CLIENT_LERP_RATE } from "../../engine";
 import { lerp, lerpColor, lerpTransform } from "../../math/lerp";
 import vary from "../../math/vary";
@@ -35,25 +35,37 @@ interface ParticleEmitterState {
   emitEveryMs: number;
 }
 
+export type ParticleSpriteCreatorCullingFunction = (entity: string, container: Container) => boolean;
+
 /**
  * Sprite creator for particle emitter entities.
  *
  * This creator will create and emit particles based on the settings of the particle emitter component.
  *
  * If you are using any sprite particle emitters, you must provide a sprite map to the constructor. You then must also call `preloadTextures` before using the creator.
+ *
+ * You can provide a culling function to determine if the emitter should be culled (emission skipped). This is useful for performance reasons, as it allows you to skip updating emitters that are not visible or relevant.
+ * This is especially useful when you have a lot of emitters in the world.
  */
 export default class ParticleSpriteCreator extends SpriteSpriteCreator {
   private readonly emitters: Map<string, ParticleEmitterState> = new Map();
+  private readonly cullingFunction?: ParticleSpriteCreatorCullingFunction;
   private squareTexture?: Texture<TextureSource<any>>;
   private circleTexture?: Texture<TextureSource<any>>;
 
-  constructor(spriteMap?: Map<number, SpriteImage>) {
-    super(spriteMap);
+  /**
+   * Creates a new particle sprite creator.
+   *
+   * @param spriteMap The sprite map to use for the particle emitter. This is required if you are using any sprite particle emitters.
+   * @param cullingFunction The function to use to determine if the emitter should be culled (emission skipped). True means the emitter is culled. False means the emitter is not culled.
+   */
+  constructor(spriteMap?: Map<number, SpriteImage>, cullingFunction?: ParticleSpriteCreatorCullingFunction) {
+    super(spriteMap, new Set([Transform, ParticleEmitter]));
 
-    this.query = new Set([Transform, ParticleEmitter]) as EntityQuery;
+    this.cullingFunction = cullingFunction;
   }
 
-  public readonly create: SpriteCreatorCreate = ({ registry, world, sceneGraph, entity, app }) => {
+  public create({ registry, world, sceneGraph, entity, app }: SpriteCreatorData): ContainerChild {
     if (!this.squareTexture) {
       this.squareTexture = graphicsToTexture(app.renderer, new Graphics().rect(0, 0, 20, 20).fill(0xffffff));
       this.circleTexture = graphicsToTexture(app.renderer, new Graphics().circle(0, 0, 10).fill(0xffffff));
@@ -83,9 +95,16 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     });
 
     return c;
-  };
+  }
 
-  public readonly update: SpriteCreatorUpdate = ({ engine, registry, sceneGraph, entity, sprite, dt }) => {
+  public update({
+    engine,
+    registry,
+    sceneGraph,
+    entity,
+    sprite,
+    dt,
+  }: SpriteCreatorData): ContainerChild | void {
     const e = registry.get(entity);
     const c = sprite! as Container;
 
@@ -95,24 +114,38 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     const newTransform = lerpTransform(
       createWorldTransform(c.position, c.rotation, c.scale, c.zIndex, true),
       transform,
-      CLIENT_LERP_RATE
+      CLIENT_LERP_RATE,
     );
     c.position.set(newTransform.position.x, newTransform.position.y);
     c.scale.set(newTransform.scale.x, -newTransform.scale.y);
     c.rotation = newTransform.rotation;
     c.zIndex = transform.zIndex;
 
-    this.updateEmitter(entity, dt, engine);
-  };
+    this.updateEmitter(entity, dt, engine, c);
+  }
 
-  public readonly delete: SpriteCreatorDelete = ({ registry, app, entity, sprite }) => {
+  public delete({ registry, app, entity, sprite }: SpriteCreatorData): void {
     sprite!.removeFromParent();
     sprite!.destroy();
 
     this.emitters.delete(entity);
-  };
+  }
 
-  private updateEmitter(entity: string, dt: number, engine: Engine) {
+  public dispose() {
+    if (this.squareTexture) {
+      this.squareTexture.destroy(true);
+      this.squareTexture = undefined;
+    }
+
+    if (this.circleTexture) {
+      this.circleTexture.destroy(true);
+      this.circleTexture = undefined;
+    }
+
+    super.dispose();
+  }
+
+  private updateEmitter(entity: string, dt: number, engine: Engine, sprite: Container) {
     const state = this.emitters.get(entity)!;
     const { emitter, container, particles } = state;
 
@@ -129,7 +162,7 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
       this.updateParticle(emitter, particle, Vec2.mul(gravity, emitter.gravityScale), dt, dtMs);
     }
 
-    if (!emitter.enabled) {
+    if (!emitter.enabled || (this.cullingFunction && this.cullingFunction(entity, sprite))) {
       return;
     }
 
@@ -137,7 +170,7 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     if (state.emitTimer <= 0) {
       state.emitThisInterval = max(
         0,
-        vary(emitter.particleEmitRatePerSecond, emitter.particleEmitRatePerSecondVariance)
+        vary(emitter.particleEmitRatePerSecond, emitter.particleEmitRatePerSecondVariance),
       );
       state.emitTimer = 1000;
       state.emitEveryMs = Math.floor(1000 / state.emitThisInterval);
@@ -198,13 +231,13 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
       if (!texture) {
         return Logger.errorAndThrow(
           "RENDERER",
-          `Particle sprite type '${emitter.particleSpriteType}' not found in sprite map.`
+          `Particle sprite type '${emitter.particleSpriteType}' not found in sprite map.`,
         );
       }
       if (Array.isArray(texture)) {
         return Logger.errorAndThrow(
           "RENDERER",
-          `Particle sprite type '${emitter.particleSpriteType}' is an array, expected single texture.`
+          `Particle sprite type '${emitter.particleSpriteType}' is an array, expected single texture.`,
         );
       }
 
@@ -248,20 +281,20 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
 
     const speed = Vec2.mul(
       Vec2.fromAngle(angle),
-      vary(emitter.particleStartSpeed, emitter.particleStartSpeedVariance)
+      vary(emitter.particleStartSpeed, emitter.particleStartSpeedVariance),
     );
     const rotateSpeed = vary(emitter.particleRotateSpeed, emitter.particleRotateSpeed);
     const acceleration = Vec2.mul(
       dir,
-      vary(emitter.particleAcceleration, emitter.particleAccelerationVariance)
+      vary(emitter.particleAcceleration, emitter.particleAccelerationVariance),
     );
     const rotationAcceleration = vary(
       emitter.particleRotateAcceleration,
-      emitter.particleRotateAccelerationVariance
+      emitter.particleRotateAccelerationVariance,
     );
     const scaleRate = new Vec2(
       vary(emitter.particleScaleXRate, emitter.particleScaleXRateVariance),
-      vary(emitter.particleScaleYRate, emitter.particleScaleYRateVariance)
+      vary(emitter.particleScaleYRate, emitter.particleScaleYRateVariance),
     );
 
     const lifetime = vary(emitter.particleLifetimeMs, emitter.particleLifetimeVarianceMs);
@@ -285,7 +318,7 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
     particle: ParticleState,
     gravity: Vec2,
     dt: number,
-    dtMs: number
+    dtMs: number,
   ) {
     // decrement lifetime
     particle.life -= dtMs;
@@ -313,8 +346,8 @@ export default class ParticleSpriteCreator extends SpriteSpriteCreator {
       particle.particle.scale.x += particle.scaleRate.y * dt;
     }
 
-    particle.speed.x += (particle.acceleration.x + gravity.x) * dt;
-    particle.speed.y += (particle.acceleration.y + gravity.y) * dt;
+    particle.speed.x += (particle.acceleration.x - gravity.x) * dt;
+    particle.speed.y += (particle.acceleration.y - gravity.y) * dt;
 
     particle.rotateSpeed += particle.rotationAcceleration * dt;
 

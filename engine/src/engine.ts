@@ -1,14 +1,15 @@
-import { Registry, RegistryType } from "./ecs/registry";
+import { RegistryType } from "./ecs/registry";
 import { State } from "@state/src/state";
-import { PhysicsWorld } from "./physics/world";
 import { Vec2 } from "./math/vec";
 import { Logger } from "@shared/src/Logger";
 import { ActionsManager } from "./core/actions";
 import { Keyboard } from "./input/keyboard";
 import { Mouse } from "./input/mouse";
-import SceneGraph from "./scene/sceneGraph";
 import World from "./scene/world";
 import SceneManager from "./scene/sceneManager";
+import type { Room as ClientRoom } from "colyseus.js";
+import type { Room as ServerRoom } from "@colyseus/core";
+import { AudioManager } from "./audio/AudioManager";
 
 export enum EngineType {
   SERVER,
@@ -43,9 +44,11 @@ export enum UpdateCallbackType {
   POST_FIXED_UPDATE,
   PRE_STATE_UPDATE,
   POST_STATE_UPDATE,
+  PRE_DISPOSE,
+  POST_DISPOSE,
 }
 
-export const CLIENT_LERP_RATE = 0.4;
+export const CLIENT_LERP_RATE = 0.3;
 
 /**
  * The options for the engine.
@@ -60,6 +63,11 @@ export interface EngineOptions {
    * The state to use for the engine.
    */
   state: State;
+
+  /**
+   * The room owning the engine.
+   */
+  room?: ClientRoom | ServerRoom;
 
   /**
    * Wether or not to start the engine automatically.
@@ -103,7 +111,7 @@ export interface EngineOptions {
   /**
    * The gravity to apply to the physics world.
    *
-   * @default { x: 0, y: 9.81 }
+   * @default { x: 0, y: 0 }
    */
   gravity?: Vec2;
 
@@ -113,6 +121,24 @@ export interface EngineOptions {
    * @default 0.05
    */
   colliderSlop?: number;
+
+  /**
+   * Wether or not to run the physics world on the client.
+   *
+   * You most likely don't want this for multiplayer games as it can cause jittery movement due to sync latency.
+   *
+   * @default false
+   */
+  runPhysicsOnClient?: boolean;
+
+  /**
+   * The audio manager to use for the engine. This is only used on the client, and should not be set on the server.
+   *
+   * Make sure to call `preloadAudio` on the audio manager before passing it to the engine.
+   *
+   * @default undefined
+   */
+  audioManager?: AudioManager;
 }
 
 const defaultEngineOptions: Partial<EngineOptions> = {
@@ -123,6 +149,7 @@ const defaultEngineOptions: Partial<EngineOptions> = {
   velocityIterations: 4,
   gravity: new Vec2(0, 0),
   colliderSlop: 0.05,
+  runPhysicsOnClient: false,
 };
 
 /**
@@ -141,6 +168,7 @@ export default class Engine {
   private readonly updateCallbacks: Map<UpdateCallbackType, UpdateCallback[]> = new Map();
 
   private _world: World;
+  private _audioManager?: AudioManager;
   private started = false;
 
   private updateTimeAccumulator = 0;
@@ -167,6 +195,15 @@ export default class Engine {
 
     this.options.state.onChange(this.stateUpdate.bind(this));
 
+    if (this.type === EngineType.CLIENT && this.options.audioManager?.isAudioPreloaded() === false) {
+      Logger.errorAndThrow(
+        "CORE",
+        "AudioManager provided to engine has not preloaded audio assets. Please call preloadAudio on the AudioManager before passing it to the engine.",
+      );
+    } else {
+      this._audioManager = this.options.audioManager;
+    }
+
     if (this.options.autoStart) {
       this.start();
     }
@@ -176,6 +213,10 @@ export default class Engine {
 
   public get world() {
     return this._world;
+  }
+
+  public get renderer() {
+    return this._world.renderer;
   }
 
   public get registry() {
@@ -192,6 +233,42 @@ export default class Engine {
 
   public get state() {
     return this.options.state;
+  }
+
+  public get audioManager() {
+    if (this.type === EngineType.SERVER) {
+      Logger.errorAndThrow("CORE", "AudioManager is not available on the server");
+    }
+
+    if (!this._audioManager) {
+      Logger.errorAndThrow("CORE", "AudioManager is not set");
+    }
+
+    return this._audioManager;
+  }
+
+  public get serverRoom() {
+    if (!this.options.room) {
+      Logger.errorAndThrow("CORE", "Room is not set");
+    }
+
+    if (typeof (this.options.room as ServerRoom).clients === "undefined") {
+      Logger.errorAndThrow("CORE", "Room is not a server room");
+    }
+
+    return this.options.room as ServerRoom;
+  }
+
+  public get clientRoom() {
+    if (!this.options.room) {
+      Logger.errorAndThrow("CORE", "Room is not set");
+    }
+
+    if (typeof (this.options.room as ClientRoom).sessionId === "undefined") {
+      Logger.errorAndThrow("CORE", "Room is not a client room");
+    }
+
+    return this.options.room as ClientRoom;
   }
 
   /**
@@ -238,8 +315,13 @@ export default class Engine {
    * Disposes of the engine.
    */
   public dispose() {
+    this.updateCallbacks.get(UpdateCallbackType.PRE_DISPOSE)?.forEach((callback) => callback(0));
+
     this.stop();
     this._world.dispose();
+    this._audioManager?.stopAll();
+
+    this.updateCallbacks.get(UpdateCallbackType.POST_DISPOSE)?.forEach((callback) => callback(0));
   }
 
   /**
@@ -329,6 +411,71 @@ export default class Engine {
     }
 
     this.timeScale = timeScale;
+  }
+
+  /**
+   * Execute a callback after a delay.
+   *
+   * This is pretty much the engine's version of `setTimeout`, you should use this instead to make sure your callbacks/timeouts align with the engine's update loop.
+   *
+   * @param cb The callback to run after the delay.
+   * @param delaySeconds The delay in seconds before running the callback.
+   * @param type The type of update callback to run the callback (and ticker) on. e.g. Use UpdateCallbackType.PRE_UPDATE to run the callback (and ticker) pre update.
+   */
+  public runAfterDelay(
+    cb: () => void,
+    delaySeconds: number,
+    type: UpdateCallbackType = UpdateCallbackType.PRE_UPDATE,
+  ) {
+    const ticker = (dt: number) => {
+      delaySeconds -= dt;
+
+      if (delaySeconds <= 0) {
+        cb();
+        this.off(type, ticker);
+      }
+    };
+
+    this.on(type, ticker);
+  }
+
+  /**
+   * Runs a callback on the next update.
+   *
+   * If you call this during an update and you use a `POST_` type callback, it will run at the end of the current update.
+   *
+   * @param cb The callback to run after the next update.
+   * @param type The type of update callback to run the callback on. e.g. Use UpdateCallbackType.PRE_UPDATE to run the callback pre update.
+   */
+  public runOnNextUpdate(cb: (dt: number) => void, type: UpdateCallbackType = UpdateCallbackType.PRE_UPDATE) {
+    const callback = (dt: number) => {
+      cb(dt);
+      this.off(type, callback);
+    };
+
+    this.on(type, callback);
+  }
+
+  /**
+   * Runs a callback when a condition is met.
+   *
+   * @param cb The callback to run after the condition is met.
+   * @param condition The condition to check.
+   * @param type The type of update callback to run the callback on. e.g. Use UpdateCallbackType.PRE_UPDATE to run the callback pre update.
+   */
+  public runOnCondition(
+    cb: (dt: number) => void,
+    condition: () => boolean,
+    type: UpdateCallbackType = UpdateCallbackType.PRE_UPDATE,
+  ) {
+    const callback = (dt: number) => {
+      if (condition()) {
+        cb(dt);
+        this.off(type, callback);
+      }
+    };
+
+    this.on(type, callback);
   }
 
   /**

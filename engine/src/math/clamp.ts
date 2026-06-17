@@ -11,5 +11,5 @@ export function max(a: number, b: number): number {
 }
 
 export function map(v: number, a: number, b: number, c: number, d: number): number {
-  return c + ((d - c) * (v - a)) / (b - a);
+  return clamp(c + ((d - c) * (v - a)) / (b - a), c, d);
 }

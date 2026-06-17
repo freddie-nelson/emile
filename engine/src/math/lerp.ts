@@ -1,6 +1,10 @@
 import { WorldTransform } from "../scene/sceneGraph";
 import { limitRadiansRange } from "./angle";
 import { Vec2 } from "./vec";
+import { hexToRgb, rgbToHex } from "../rendering/helpers/color";
+import { Logger } from "@shared/src/Logger";
+import Engine, { UpdateCallbackType } from "../engine";
+import { clamp } from "./clamp";
 
 /**
  * Linearly interpolates between two values.
@@ -29,6 +33,9 @@ export function lerp(a: number, b: number, t: number): number {
  * @returns The interpolated rotation angle.
  */
 export function lerpAngle(a: number, b: number, t: number): number {
+  a = limitRadiansRange(a);
+  b = limitRadiansRange(b);
+
   if (!a) {
     a = Math.PI * 2;
   }
@@ -99,14 +106,51 @@ export function lerpTransform(
   };
 }
 
-const MASK1 = 0xff00ff;
-const MASK2 = 0x00ff00;
-export function lerpColor(a: number, b: number, t: number): number {
-  const f2 = 256 * t;
-  const f1 = 256 - f2;
+export function lerpArray(a: number[], b: number[], t: number, transform?: (n: number) => number): number[] {
+  if (a.length !== b.length) {
+    Logger.errorAndThrow("LERP", "lerpArray: a and b must be the same length");
+    throw new Error("Unreachable code");
+  }
 
-  return (
-    ((((a & MASK1) * f1 + (b & MASK1) * f2) >> 8) & MASK1) |
-    ((((a & MASK2) * f1 + (b & MASK2) * f2) >> 8) & MASK2)
-  );
+  return a.map((value, index) => {
+    return transform ? transform(lerp(value, b[index], t)) : lerp(value, b[index], t);
+  });
+}
+
+export function lerpColor(a: number, b: number, t: number): number {
+  const aRgb = hexToRgb(a);
+  const bRgb = hexToRgb(b);
+  const newRgb = lerpArray(aRgb, bRgb, t, (n) => Math.round(n));
+
+  return rgbToHex(newRgb[0], newRgb[1], newRgb[2]);
+}
+
+/**
+ * Lerps between 2 values over engine updates/ticks.
+ *
+ * @param engine The engine to attach the update callback to.
+ * @param a The start value.
+ * @param b The end value.
+ * @param duration The duration of the lerp in seconds.
+ * @param cb The callback to call with the lerped value.
+ */
+export function lerpOverTime(
+  engine: Engine,
+  a: number,
+  b: number,
+  duration: number,
+  cb: (n: number) => void
+) {
+  let time = 0;
+
+  const update = (dt: number) => {
+    time += dt;
+    cb(lerp(a, b, clamp(time / duration, 0, 1)));
+
+    if (time >= duration) {
+      engine.off(UpdateCallbackType.POST_UPDATE, update);
+    }
+  };
+
+  engine.on(UpdateCallbackType.POST_UPDATE, update);
 }

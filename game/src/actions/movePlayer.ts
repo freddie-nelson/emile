@@ -6,7 +6,7 @@ import { Action, createFireAction, createFireServerAction } from "./actions";
 import { ActionType } from "./actionType";
 import { z } from "zod";
 
-export const PLAYER_MOVE_FORCE = 0.000004;
+export const PLAYER_MOVE_FORCE = 0.000002;
 
 export interface MovePlayerData {
   player: Player;

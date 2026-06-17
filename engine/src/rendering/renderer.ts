@@ -8,6 +8,7 @@ import { Renderable } from "./renderable";
 import { Camera, CameraOptions } from "./camera";
 import Engine from "../engine";
 import SceneGraph from "../scene/sceneGraph";
+import { Vec2 } from "../math/vec";
 
 export interface RendererOptions {
   /**
@@ -73,6 +74,15 @@ export interface RendererOptions {
    * @default false
    */
   enablePixiDevTools?: boolean;
+
+  /**
+   * Wether or not to enable pixi interactivity on the stage.
+   *
+   * Uses `app.stage.eventMode = "static"` to enable interaction on the stage.
+   *
+   * @default true
+   */
+  enablePixiInteraction?: boolean;
 }
 
 const defaultRendererOptions: Partial<RendererOptions> = {
@@ -84,23 +94,48 @@ const defaultRendererOptions: Partial<RendererOptions> = {
   backgroundColor: "black",
   scale: 60,
   enablePixiDevTools: false,
+  enablePixiInteraction: true,
 };
 
 export interface SpriteCreatorData {
-  engine: Engine;
-  registry: Registry;
-  sceneGraph: SceneGraph;
-  renderer: Renderer;
-  app: Application;
-  world: Container;
-  entity: string;
-  sprite: ContainerChild | null;
-  dt: number;
+  readonly engine: Engine;
+  readonly registry: Registry;
+  readonly sceneGraph: SceneGraph;
+  readonly renderer: Renderer;
+  readonly app: Application;
+  readonly world: Container;
+  readonly entity: string;
+  readonly sprite: ContainerChild | null;
+  readonly dt: number;
 }
 
-export type SpriteCreatorCreate = (data: SpriteCreatorData) => ContainerChild;
-export type SpriteCreatorUpdate = (data: SpriteCreatorData) => ContainerChild | void;
-export type SpriteCreatorDelete = (data: SpriteCreatorData, replacing: boolean) => void;
+export enum SpriteCreatorEventType {
+  /**
+   * Emitted after a sprite is created.
+   */
+  CREATE,
+
+  /**
+   * Emitted after a sprite is updated.
+   */
+  UPDATE,
+
+  /**
+   * Emitted after a sprite is deleted.
+   */
+  DELETE,
+
+  /**
+   * Emitted after the sprite creator is disposed.
+   */
+  DISPOSE,
+}
+
+export type SpriteCreatorEventCallback = (
+  data: SpriteCreatorData,
+  creator: SpriteCreator,
+  type: SpriteCreatorEventType,
+) => void;
 
 /**
  * A sprite creator.
@@ -111,7 +146,7 @@ export type SpriteCreatorDelete = (data: SpriteCreatorData, replacing: boolean) 
  *
  * @warning Your create and delete methods are responsible for adding/removing the sprite from the world container. The renderer will not do this for you.
  */
-export interface SpriteCreator {
+export abstract class SpriteCreator {
   /**
    * The query to match entities against.
    *
@@ -122,37 +157,119 @@ export interface SpriteCreator {
   readonly query?: EntityQuery;
 
   /**
+   * If set, this will override the query for this sprite creator.
+   *
+   * Instead the sprite creator will run for all entities in this set.
+   *
+   * This can also be useful for running a 'client only' sprite creator that doesn't use entities. You can instead fill the set with as many **unique** strings as you would like sprites.
+   * A good unique string would be `Math.random().toString().substring(2, 15)`, this is almost guaranteed to be unique and not collide with any of your real entities.
+   *
+   * DO NOT MODIFY THE SET AFTER CREATION.
+   */
+  readonly overrideQueryEntities?: Set<string>;
+
+  private readonly listenerCallbacks: Map<SpriteCreatorEventType, SpriteCreatorEventCallback[]> = new Map();
+
+  /**
+   * Creates a new sprite creator.
+   *
+   * @param query The query to match entities against.
+   * @param overrideQueryEntities The override query entities to match against.
+   */
+  constructor(query?: EntityQuery, overrideQueryEntities?: Set<string>) {
+    this.query = query;
+    this.overrideQueryEntities = overrideQueryEntities;
+  }
+
+  /**
    * Creates a sprite in the renderer.
    *
-   * @param registry The registry of the renderer
-   * @param app The pixi app of the renderer
-   * @param entity The entity to create the sprite for
+   * @param data The data for creating the sprite for the entity.
    *
    * @returns The created sprite
    */
-  readonly create?: SpriteCreatorCreate;
+  abstract create(data: SpriteCreatorData): ContainerChild;
 
   /**
    * Updates a sprite in the renderer.
    *
-   * @param registry The registry of the renderer
-   * @param app The pixi app of the renderer
-   * @param entity The entity to update the sprite for
-   * @param sprite The sprite to update
-   * @param dt The delta time since the last engine update
+   * @param data The data for updating the sprite for the entity.
    *
    * @returns The new created sprite
    */
-  readonly update?: SpriteCreatorUpdate;
+  abstract update(data: SpriteCreatorData): ContainerChild | void;
   /**
    * Deletes a sprite from the renderer.
    *
-   * @param registry The registry of the renderer
-   * @param app The pixi app of the renderer
-   * @param entity The entity to delete the sprite for
-   * @param sprite The sprite to delete
+   * @param data The data for deleting the sprite for the entity.
    */
-  readonly delete?: SpriteCreatorDelete;
+  abstract delete(data: SpriteCreatorData, replacing: boolean): void;
+
+  /**
+   * Dispose of the sprite creator.
+   *
+   * Can be used to clean up any resources used by the sprite creator.
+   *
+   * Called when the renderer is disposed.
+   */
+  abstract dispose(): void;
+
+  /**
+   * Adds a listener for the given event.
+   *
+   * @param event The event to listen for.
+   * @param callback The callback to call when the event is fired.
+   */
+  public on(event: SpriteCreatorEventType, callback: SpriteCreatorEventCallback) {
+    if (!this.listenerCallbacks.has(event)) {
+      this.listenerCallbacks.set(event, []);
+    }
+
+    this.listenerCallbacks.get(event)!.push(callback);
+  }
+
+  /**
+   * Removes a listener for the given event.
+   *
+   * If no callback is provided, all listeners for the event will be removed.
+   *
+   * @param event The event to stop listening for.
+   * @param callback The callback to stop listening for. If not provided, all listeners for the event will be removed.
+   */
+  public off(event: SpriteCreatorEventType, callback?: SpriteCreatorEventCallback) {
+    if (!this.listenerCallbacks.has(event)) {
+      return;
+    }
+
+    if (!callback) {
+      this.listenerCallbacks.delete(event);
+      return;
+    }
+
+    const callbacks = this.listenerCallbacks.get(event)!;
+    const index = callbacks.indexOf(callback);
+    if (index !== -1) {
+      callbacks.splice(index, 1);
+    }
+  }
+
+  /**
+   * Emits an event to all listeners.
+   *
+   * @note You don't need to call this method yourself unless you want to emit custom events. The renderer will automatically emit the CREATE, UPDATE, DELETE and DISPOSE events at the appropriate times.
+   *
+   * @param event The event to emit.
+   * @param data The data to pass to the listeners.
+   */
+  public emit(event: SpriteCreatorEventType, data: SpriteCreatorData) {
+    if (!this.listenerCallbacks.has(event)) {
+      return;
+    }
+
+    for (const callback of this.listenerCallbacks.get(event)!) {
+      callback(data, this, event);
+    }
+  }
 }
 
 /**
@@ -171,6 +288,7 @@ export class Renderer extends System {
   private app: Application | null = null;
   private world: Container | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private isAttached = false;
 
   public readonly camera: Camera = new Camera();
   public getCameraTarget?: () => Required<CameraOptions>["target"];
@@ -181,7 +299,7 @@ export class Renderer extends System {
    * @param options The options for the renderer.
    */
   constructor(options: RendererOptions) {
-    super(SystemType.CLIENT, new Set([Transform, Renderable]), 0);
+    super(SystemType.CLIENT, new Set([Transform, Renderable]), 0, true);
 
     this.options = { ...defaultRendererOptions, ...options } as Required<RendererOptions>;
 
@@ -195,8 +313,8 @@ export class Renderer extends System {
       return;
     }
 
-    this.updateSpriteCreators(engine, registry, entities, dt);
     this.updateCamera(engine, registry, dt);
+    this.updateSpriteCreators(engine, registry, entities, dt);
 
     // this.app.render();
   };
@@ -204,17 +322,20 @@ export class Renderer extends System {
   public dispose = () => {
     this.waitForInitialized().then(() => {
       this.resizeObserver?.disconnect();
+
+      this.spriteCreators.forEach((creator) => {
+        creator.dispose?.();
+      });
+
       this.app?.destroy(
         {
           removeView: true,
         },
         {
           children: true,
-          texture: true,
-          textureSource: true,
           context: true,
           style: true,
-        }
+        },
       );
     });
   };
@@ -238,18 +359,23 @@ export class Renderer extends System {
     };
     await this.app.init(options);
 
-    if (this.options.parentElement) {
-      this.attach(this.options.parentElement);
-    }
-
     if (this.options.enablePixiDevTools) {
       (window as any).__PIXI_DEVTOOLS__ = {
         app: this.app,
       };
     }
 
+    if (this.options.enablePixiInteraction) {
+      this.app.stage.eventMode = "static";
+      this.app.stage.hitArea = this.app.screen;
+    }
+
     this.world = new Container();
     this.app.stage.addChild(this.world);
+
+    if (this.options.parentElement) {
+      this.attach(this.options.parentElement);
+    }
 
     this.initialized = true;
   }
@@ -262,16 +388,13 @@ export class Renderer extends System {
 
     this.options.parentElement = parent;
 
-    if (this.options.autoSize) {
-      this.app.resizeTo = parent;
-    }
+    parent.appendChild(this.app.canvas);
+    this.isAttached = true;
 
     this.app.renderer.resize(
       this.options.width === -1 ? parent.clientWidth : this.options.width,
-      this.options.height === -1 ? parent.clientHeight : this.options.height
+      this.options.height === -1 ? parent.clientHeight : this.options.height,
     );
-
-    parent.appendChild(this.app.canvas);
 
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
@@ -281,10 +404,14 @@ export class Renderer extends System {
       this.app?.resize();
     });
     this.resizeObserver.observe(parent);
+
+    if (this.options.autoSize) {
+      this.app.resizeTo = parent;
+    }
   }
 
   /**
-   * Gets weather or not the renderer is initialized.
+   * Gets wether or not the renderer is initialized.
    *
    * @returns Wether or not the renderer is initialized.
    */
@@ -356,6 +483,51 @@ export class Renderer extends System {
     return this.options.scale;
   }
 
+  /**
+   * Gets the pixi app of the renderer.
+   *
+   * @returns The pixi app of the renderer.
+   */
+  public getApp() {
+    if (!this.isInitialized()) {
+      Logger.errorAndThrow("CORE", "Cannot get app before renderer is initialized.");
+    }
+
+    return this.app;
+  }
+
+  /**
+   * Gets the world container of the renderer.
+   *
+   * @returns The world container of the renderer.
+   */
+  public getWorld() {
+    if (!this.isInitialized()) {
+      Logger.errorAndThrow("CORE", "Cannot get world before renderer is initialized.");
+    }
+
+    return this.world;
+  }
+
+  /**
+   * Converts a pixel position to a world position.
+   *
+   * @param p The pixel position to convert. The pixel position should be relative to the top left of the screen (standard browser coordinates).
+   *
+   * @returns The world position of the pixel.
+   */
+  public convertPixelPosToWorldPos(p: Vec2): Vec2 {
+    if (!this.isInitialized() || !this.app || !this.world) {
+      Logger.errorAndThrow("CORE", "Cannot convert pixel to world before renderer is initialized.");
+      throw new Error(); // unreachable
+    }
+
+    return new Vec2(
+      (p.x - this.app.screen.width / 2) / this.app.stage.scale.x + this.world.pivot.x,
+      (p.y - this.app.screen.height / 2) / this.app.stage.scale.y + this.world.pivot.y,
+    );
+  }
+
   public getSpriteFromCreator(creator: SpriteCreator, entity: string) {
     if (!this.sprites.has(entity)) {
       return null;
@@ -365,7 +537,7 @@ export class Renderer extends System {
   }
 
   private updateCamera(engine: Engine, registry: Registry, dt: number) {
-    if (!this.app || !this.world) {
+    if (!this.app || !this.isInitialized() || !this.world || !this.camera || !this.isAttached) {
       return;
     }
 
@@ -381,7 +553,7 @@ export class Renderer extends System {
 
     this.world.position.set(
       this.app.screen.width / 2 / this.app.stage.scale.x,
-      this.app.screen.height / 2 / this.app.stage.scale.y
+      this.app.screen.height / 2 / this.app.stage.scale.y,
     );
 
     this.world.pivot.set(this.camera.options.worldCentre.x, this.camera.options.worldCentre.y);
@@ -396,17 +568,28 @@ export class Renderer extends System {
 
       for (const creator of this.sprites.get(entity)!.keys()) {
         const sprite = this.sprites.get(entity)!.get(creator)!;
-        creator.delete?.(this.createSpriteCreatorData(engine, registry, entity, sprite, dt), false);
+
+        const data = this.createSpriteCreatorData(engine, registry, entity, sprite, dt);
+        creator.delete?.(data, false);
+        creator.emit(SpriteCreatorEventType.DELETE, data);
       }
 
       this.sprites.delete(entity);
     }
+
+    const overrideSpriteCreators: SpriteCreator[] = [];
 
     // create and update sprites for each sprite creator
     for (const entity of entities) {
       const e = registry.get(entity);
 
       for (const creator of this.spriteCreators) {
+        // skip sprite creators that define an override query
+        if (creator.overrideQueryEntities) {
+          overrideSpriteCreators.push(creator);
+          continue;
+        }
+
         // skip sprites that don't match the query
         // and/or delete sprites that no longer match the query
         if (creator.query && !Entity.matchesQuery(e, creator.query)) {
@@ -416,8 +599,11 @@ export class Renderer extends System {
           }
 
           const sprite = entitySprites.get(creator)!;
-          creator.delete?.(this.createSpriteCreatorData(engine, registry, entity, sprite, dt), false);
+          const data = this.createSpriteCreatorData(engine, registry, entity, sprite, dt);
+
+          creator.delete?.(data, false);
           entitySprites.delete(creator);
+          creator.emit(SpriteCreatorEventType.DELETE, data);
           continue;
         }
 
@@ -428,18 +614,57 @@ export class Renderer extends System {
         // create sprite if it doesn't exist
         const entitySprites = this.sprites.get(entity)!;
         if (!entitySprites.has(creator) && creator.create) {
-          const sprite = creator.create(this.createSpriteCreatorData(engine, registry, entity, null, dt));
+          const data = this.createSpriteCreatorData(engine, registry, entity, null, dt);
+          const sprite = creator.create(data);
           entitySprites.set(creator, sprite);
+          creator.emit(SpriteCreatorEventType.CREATE, { ...data, sprite });
         }
 
         // update sprite
         const sprite = entitySprites.get(creator)!;
-        const newSprite = creator.update?.(
-          this.createSpriteCreatorData(engine, registry, entity, sprite, dt)
-        );
+        const data = this.createSpriteCreatorData(engine, registry, entity, sprite, dt);
+
+        const newSprite = creator.update?.(data);
+        creator.emit(SpriteCreatorEventType.UPDATE, data);
+
         if (newSprite) {
-          creator.delete?.(this.createSpriteCreatorData(engine, registry, entity, sprite, dt), true);
+          creator.delete?.(data, true);
           entitySprites.set(creator, newSprite);
+          creator.emit(SpriteCreatorEventType.DELETE, data);
+          creator.emit(SpriteCreatorEventType.CREATE, { ...data, sprite: newSprite });
+        }
+      }
+    }
+
+    // handle override sprite creators
+    for (const creator of overrideSpriteCreators) {
+      for (const entity of creator.overrideQueryEntities!) {
+        if (!this.sprites.has(entity)) {
+          this.sprites.set(entity, new Map());
+        }
+
+        // create sprite if it doesn't exist
+        const entitySprites = this.sprites.get(entity)!;
+        if (!entitySprites.has(creator) && creator.create) {
+          const data = this.createSpriteCreatorData(engine, registry, entity, null, dt);
+          const sprite = creator.create(data);
+          entitySprites.set(creator, sprite);
+          creator.emit(SpriteCreatorEventType.CREATE, { ...data, sprite });
+        }
+
+        // update sprite
+        const sprite = entitySprites.get(creator)!;
+        const data = this.createSpriteCreatorData(engine, registry, entity, sprite, dt);
+
+        const newSprite = creator.update?.(data);
+        creator.emit(SpriteCreatorEventType.UPDATE, data);
+
+        // replace the sprite if the creator returned a new one
+        if (newSprite) {
+          creator.delete?.(data, true);
+          entitySprites.set(creator, newSprite);
+          creator.emit(SpriteCreatorEventType.DELETE, data);
+          creator.emit(SpriteCreatorEventType.CREATE, { ...data, sprite: newSprite });
         }
       }
     }
@@ -450,7 +675,7 @@ export class Renderer extends System {
     registry: Registry,
     entity: string,
     sprite: ContainerChild | null,
-    dt: number
+    dt: number,
   ): SpriteCreatorData {
     return {
       engine,

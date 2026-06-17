@@ -63,6 +63,17 @@ export class ParticleEmitter extends Component {
   @type("boolean") public enabled: boolean = true;
 
   /**
+   * The lifetime of the particle emitter in milliseconds.
+   *
+   * Once enabled, this is the time that the emitter will be enabled for. After this time, the emitter will be disabled automatically.
+   *
+   * You can set this to -1 to have the emitter enabled indefinitely.
+   *
+   * @default -1
+   */
+  @type("number") public enabledLifetimeMs: number = -1;
+
+  /**
    * The scale factor of the gravity applied to the particles.
    *
    * Set to 0 to disable gravity.

@@ -1,4 +1,3 @@
-import { Entity } from "./ecs/entity";
 import { Vec2 } from "./math/vec";
 import { ColliderType } from "./physics/collider";
 
@@ -11,5 +10,6 @@ export interface TypedBody extends Matter.Body {
     entity?: string;
     colliderType?: ColliderType;
     bodyScale?: Vec2;
+    gravityScale?: number;
   } | null;
 }

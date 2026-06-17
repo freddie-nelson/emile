@@ -67,11 +67,6 @@ export class Registry {
   > = new Map();
 
   /**
-   * All the distinct entity queries for the systems in the registry.
-   */
-  private entityQueries: EntityQuery[] = [];
-
-  /**
    * The entity map to store entities in.
    */
   private entities: EntityMap;
@@ -79,18 +74,23 @@ export class Registry {
   /**
    * The map of queries to the entities that match that query.
    */
-  private queryEntities: Map<string, Set<string>> = new Map();
+  private cachedQueries: Map<string, Set<string>> = new Map();
+
+  /**
+   * All the query keys in the `cachedQueries` map.
+   */
+  private cachedEntityQueries: EntityQuery[] = [];
 
   private onEntityCreated = (entity: Entity) => {
-    this.updateEntityMapsForEntity(entity);
+    this.updateCachedQueriesForEntity(entity);
   };
 
   private onEntityDestroyed = (entity: Entity) => {
-    this.deleteEntityFromEntityMaps(entity);
+    this.deleteEntityFromCachedQueries(entity);
   };
 
   private onEntityModified = (entity: Entity) => {
-    this.updateEntityMapsForEntity(entity);
+    this.updateCachedQueriesForEntity(entity);
   };
 
   /**
@@ -225,6 +225,21 @@ export class Registry {
   }
 
   /**
+   * Removes an entity from the registry and doesn't throw an error if it doesn't exist.
+   *
+   * @note This is useful for when you want to remove an entity but don't know if it exists.
+   *
+   * @param id The id of the entity to destroy.
+   */
+  public safeDestroy(id: string) {
+    if (!this.entities.has(id)) {
+      return;
+    }
+
+    this.destroy(id);
+  }
+
+  /**
    * Checks if an entity is in the registry.
    *
    * @param id The id of the entity to check for.
@@ -331,6 +346,64 @@ export class Registry {
   }
 
   /**
+   * Performs an inline query on the registry.
+   *
+   * @note DO NOT MODIFY THE SET RETURNED BY THIS FUNCTION.
+   *
+   * @warning If you fill the cache with lots of queries that are rarely used, it could decrease performance. Remember: all cached queries must be checked and potentially updated with every entity modification (component add/remove, entity deletion).
+   *
+   * @param query The query to use to get the entities.
+   * @param addQueryToCache Wether to add the query to the cache or not. This is used for performance reasons. Set this to false if you are going to use the query only once.
+   *
+   * @returns The entities that match the query.
+   */
+  public query(query: EntityQuery, addQueryToCache = true): Set<string> {
+    const entities = this.cachedQueries.get(Registry.getEntityQueryKey(query));
+    if (entities) {
+      return entities;
+    }
+
+    const set = new Set<string>();
+    for (const entity of this.entities.values()) {
+      if (Entity.matchesQuery(entity, query)) {
+        set.add(entity.id);
+      }
+    }
+
+    if (addQueryToCache) {
+      this.cachedQueries.set(Registry.getEntityQueryKey(query), set);
+      this.cachedEntityQueries.push(query);
+    }
+
+    return set;
+  }
+
+  /**
+   * Removes a query from the cache.
+   *
+   * If the query is not in the cache, this function does nothing. Next time the query is used (and `addQueryToCache` is true), it will be added to the cache again.
+   *
+   * @param query The query to remove from the cache.
+   */
+  public removeQueryFromCache(query: EntityQuery) {
+    const key = Registry.getEntityQueryKey(query);
+    this.cachedQueries.delete(key);
+    this.cachedEntityQueries = this.cachedEntityQueries.filter((q) => Registry.getEntityQueryKey(q) !== key);
+  }
+
+  /**
+   * Clears the query cache.
+   *
+   * This is useful if you are completely changing scenes or systems and want to clear all the cached queries to free up memory and improve performance.
+   *
+   * @warning Use this carefully as it could cause drastic performance degradation if you are not careful.
+   */
+  public clearQueryCache() {
+    this.cachedQueries.clear();
+    this.cachedEntityQueries = [];
+  }
+
+  /**
    * Gets the entities in the registry.
    *
    * @returns The entities in the registry.
@@ -350,6 +423,10 @@ export class Registry {
    */
   public addSystem(system: System) {
     if (!this.doesSystemTypeMatch(system)) {
+      // Logger.warn(
+      //   "REGISTRY",
+      //   `You are trying to add a system to the registry that does not match the registry type. System ${system.constructor.name} is of type ${system.type}, but the registry is of type ${this.type}.`
+      // );
       return;
     }
 
@@ -360,7 +437,7 @@ export class Registry {
     this.systems.push(system);
     this.systems.sort((a, b) => b.priority - a.priority);
 
-    this.updateEntityMaps();
+    this.updateCachedQueriesForSystems();
   }
 
   /**
@@ -379,7 +456,7 @@ export class Registry {
     this.systems.splice(index, 1);
     this.systems.sort((a, b) => b.priority - a.priority);
 
-    this.updateEntityMaps();
+    this.updateCachedQueriesForSystems();
   }
 
   /**
@@ -409,7 +486,7 @@ export class Registry {
    */
   public clearSystems() {
     this.systems = [];
-    this.updateEntityMaps();
+    this.updateCachedQueriesForSystems();
   }
 
   /**
@@ -435,7 +512,7 @@ export class Registry {
    */
   public addComponentListener(
     component: ComponentConstructor,
-    cb: (entity: Entity, component: Component, componentName: string) => void
+    cb: (entity: Entity, component: Component, componentName: string) => void,
   ) {
     const key = getComponentIdFromConstructor(component);
     if (!this.componentAddListeners.has(key)) {
@@ -453,7 +530,7 @@ export class Registry {
    */
   public removeComponentListener(
     component: ComponentConstructor,
-    cb: (entity: Entity, component: Component, componentName: string) => void
+    cb: (entity: Entity, component: Component, componentName: string) => void,
   ) {
     const key = getComponentIdFromConstructor(component);
     if (!this.componentAddListeners.has(key)) {
@@ -473,7 +550,7 @@ export class Registry {
     }
   }
 
-  private getAllEntityQueries() {
+  private getAllSystemEntityQueries() {
     const queries: EntityQuery[] = [];
     const keys = new Set<string>();
 
@@ -488,39 +565,46 @@ export class Registry {
     return queries;
   }
 
-  private updateEntityMaps() {
-    // update the entity queries
-    this.entityQueries = this.getAllEntityQueries();
+  private updateCachedQueriesForSystems() {
+    const systemEntityQueries = this.getAllSystemEntityQueries();
 
     // reset the query entities
-    this.queryEntities.clear();
-    for (const query of this.entityQueries) {
-      this.queryEntities.set(Registry.getEntityQueryKey(query), new Set());
+    const newQueries: Set<EntityQuery> = new Set();
+
+    for (const query of systemEntityQueries) {
+      const key = Registry.getEntityQueryKey(query);
+
+      if (!this.cachedQueries.has(key)) {
+        this.cachedQueries.set(key, new Set());
+        this.cachedEntityQueries.push(query);
+
+        newQueries.add(query);
+      }
     }
 
-    // add entities to the query entities
+    // add entities to the new queries
     for (const entity of this.entities.values()) {
-      for (const query of this.entityQueries) {
+      for (const query of newQueries) {
         if (Entity.matchesQuery(entity, query)) {
-          this.queryEntities.get(Registry.getEntityQueryKey(query))!.add(entity.id);
+          this.cachedQueries.get(Registry.getEntityQueryKey(query))!.add(entity.id);
         }
       }
     }
   }
 
-  private updateEntityMapsForEntity(entity: Entity) {
-    for (const query of this.entityQueries) {
+  private updateCachedQueriesForEntity(entity: Entity) {
+    for (const query of this.cachedEntityQueries) {
       if (Entity.matchesQuery(entity, query)) {
-        this.queryEntities.get(Registry.getEntityQueryKey(query))!.add(entity.id);
+        this.cachedQueries.get(Registry.getEntityQueryKey(query))!.add(entity.id);
       } else {
-        this.queryEntities.get(Registry.getEntityQueryKey(query))!.delete(entity.id);
+        this.cachedQueries.get(Registry.getEntityQueryKey(query))!.delete(entity.id);
       }
     }
   }
 
-  private deleteEntityFromEntityMaps(entity: Entity) {
-    for (const query of this.entityQueries) {
-      this.queryEntities.get(Registry.getEntityQueryKey(query))?.delete(entity.id);
+  private deleteEntityFromCachedQueries(entity: Entity) {
+    for (const query of this.cachedEntityQueries) {
+      this.cachedQueries.get(Registry.getEntityQueryKey(query))?.delete(entity.id);
     }
   }
 
@@ -529,7 +613,7 @@ export class Registry {
       engine: engine,
       registry: this,
       sceneGraph: engine.sceneGraph,
-      entities: this.queryEntities.get(system.queryKey)!,
+      entities: this.cachedQueries.get(system.queryKey)!,
       dt,
     };
   }

@@ -1,19 +1,18 @@
 import { ColorSource, ContainerChild, Graphics } from "pixi.js";
-import { SpriteCreator, SpriteCreatorCreate, SpriteCreatorDelete, SpriteCreatorUpdate } from "../renderer";
+import { SpriteCreator, SpriteCreatorData } from "../renderer";
 import { Rigidbody } from "../../physics/rigidbody";
 import { CircleCollider, ColliderType, PolygonCollider, RectangleCollider } from "../../physics/collider";
 import { PhysicsWorld } from "../../physics/world";
 import { Transform } from "../../core/transform";
 import { Logger } from "@shared/src/Logger";
-import { Entity, EntityQuery } from "../../ecs/entity";
+import { Entity } from "../../ecs/entity";
 import { ColorTag } from "../colorTag";
 import { Vec2 } from "../../math/vec";
 import { lerpTransform } from "../../math/lerp";
 import { CLIENT_LERP_RATE } from "../../engine";
 import { createWorldTransform } from "../../scene/sceneGraph";
 
-export default class PhysicsEntitySpriteCreator implements SpriteCreator {
-  public readonly query: EntityQuery = new Set([Transform, Rigidbody]);
+export default class PhysicsEntitySpriteCreator extends SpriteCreator {
   private readonly oldScales: Map<string, Vec2> = new Map();
 
   private readonly defaultColor: ColorSource;
@@ -29,6 +28,8 @@ export default class PhysicsEntitySpriteCreator implements SpriteCreator {
     rigidbodyRadius = 0.1,
     rigidbodyOpacity = 0.5
   ) {
+    super(new Set([Transform, Rigidbody]));
+
     this.defaultColor = defaultColor;
     this.defaultOpacity = defaultOpacity;
     this.zIndex = zIndex;
@@ -36,7 +37,7 @@ export default class PhysicsEntitySpriteCreator implements SpriteCreator {
     this.rigidbodyOpacity = rigidbodyOpacity;
   }
 
-  public readonly create: SpriteCreatorCreate = ({ registry, sceneGraph, world, entity }) => {
+  public create({ registry, sceneGraph, world, entity }: SpriteCreatorData): ContainerChild {
     const e = registry.get(entity);
 
     const transform = sceneGraph.getWorldTransform(entity);
@@ -55,7 +56,7 @@ export default class PhysicsEntitySpriteCreator implements SpriteCreator {
 
     if (!collider) {
       s.circle(0, 0, this.rigidbodyRadius);
-      s.alpha = this.rigidbodyOpacity;
+      s.alpha = colorTag?.opacity ?? this.rigidbodyOpacity;
       s.fill(colorTag?.color || this.defaultColor);
       return s;
     }
@@ -85,14 +86,14 @@ export default class PhysicsEntitySpriteCreator implements SpriteCreator {
     }
 
     s.fill(colorTag?.color || this.defaultColor);
-    s.alpha = this.defaultOpacity;
+    s.alpha = colorTag?.opacity ?? this.defaultOpacity;
 
     this.setPivot(s, collider.type);
 
     return s;
-  };
+  }
 
-  public readonly update: SpriteCreatorUpdate = (data) => {
+  public update(data: SpriteCreatorData): ContainerChild | void {
     const { registry, sceneGraph, entity, sprite } = data;
 
     const e = registry.get(entity);
@@ -116,16 +117,20 @@ export default class PhysicsEntitySpriteCreator implements SpriteCreator {
     s.zIndex = this.zIndex ?? transform.zIndex;
 
     this.setPivot(s, collider?.type);
-  };
+  }
 
-  public readonly delete: SpriteCreatorDelete = ({ registry, app, entity, sprite }, replacing) => {
+  public delete({ registry, app, entity, sprite }: SpriteCreatorData, replacing: boolean): void {
     sprite!.removeFromParent();
     sprite!.destroy();
 
     if (!replacing) {
       this.oldScales.delete(entity);
     }
-  };
+  }
+
+  public dispose(): void {
+    // No resources to dispose
+  }
 
   private setPivot(s: ContainerChild, colliderType?: ColliderType) {
     if (colliderType === ColliderType.CIRCLE) {

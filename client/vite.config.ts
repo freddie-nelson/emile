@@ -13,14 +13,11 @@ export default defineConfig({
       "@engine": path.resolve(__dirname, "../engine/"),
       "@game": path.resolve(__dirname, "../game/"),
     },
+    dedupe: ["pixi.js", "matter-js", "colyseus.js", "gl-matrix"],
   },
 
   build: {
     target: "es2020",
-    minify: "esbuild",
-  },
-
-  esbuild: {
-    minifyIdentifiers: false,
+    minify: true,
   },
 });
