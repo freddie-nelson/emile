@@ -88,7 +88,7 @@ async function buildIndex() {
  * the given terms (case-insensitive). Falls back to the first N lines when
  * no match is found (e.g. pure filename match).
  */
-function extractSnippets(content: string, terms: string[], contextLines = 3, maxSnippets = 5): string[] {
+function extractSnippets(content: string, terms: string[], contextLines = 3, maxSnippets = 2): string[] {
   const lines = content.split("\n");
   const lowerTerms = terms.map((t) => t.toLowerCase());
   const snippets = [];
@@ -158,6 +158,34 @@ function createServer() {
             text: `Found ${results.length} result(s) for "${query}":\n\n${sections.join("\n\n---\n\n")}`,
           },
         ],
+      };
+    },
+  );
+
+  server.tool(
+    "viewDocumentation",
+    "View the entire contents of a documentation file by its path. The path must correspond to an existing documentation or examples file in the project (e.g. 'docs/index.md', 'docs/contributing/index.md', 'examples/index.md').",
+    {
+      path: z
+        .string()
+        .describe("The path of the documentation file to view, relative to the docs directory root"),
+    },
+    async ({ path }) => {
+      const content = docStore.get(path);
+      if (content === undefined) {
+        const available = [...docStore.keys()];
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Documentation not found at path: "${path}"\n\nAvailable documentation files:\n${available.map((p) => `- ${p}`).join("\n")}`,
+            },
+          ],
+        };
+      }
+
+      return {
+        content: [{ type: "text", text: content }],
       };
     },
   );
