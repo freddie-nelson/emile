@@ -13,7 +13,7 @@ export const createFireAction = <T>(type: ActionType) => {
     if (engine.type !== EngineType.CLIENT) {
       Logger.errorAndThrow(
         "ACTION",
-        `Attempt to fire action '${type}' with fireAction on server side, only use fireAction on client side.`
+        `Attempt to fire action '${type}' with fireAction on server side, only use fireAction on client side.`,
       );
     }
 
@@ -33,8 +33,8 @@ export const createFireServerAction = <T>(type: ActionType) => {
 /**
  * An action.
  *
- * @typeparam C The client side data type for the action. (type of data used in action handler)
- * @typepram S The server side data type for the action. (type of data sent from client to server)
+ * @template C The client side data type for the action. (type of data used in action handler)
+ * @template S The server side data type for the action. (type of data sent from client to server)
  *
  * DO NOT REMOVE THIS INTERFACE IT IS REQUIRED BY THE ENGINE.
  */
@@ -113,7 +113,7 @@ export class GameActionStore {
     if (this.actions.has(action.type)) {
       Logger.warn(
         "ACTION",
-        `Action with type '${action.type}' already exists, unregistering old action. Are you sure this is what you intended?`
+        `Action with type '${action.type}' already exists, unregistering old action. Are you sure this is what you intended?`,
       );
     }
 
