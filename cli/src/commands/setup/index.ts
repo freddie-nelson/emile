@@ -1,4 +1,4 @@
-import {Args, Command, Flags} from '@oclif/core'
+import {Command, Flags} from '@oclif/core'
 import setup from '../../helpers/setup.js'
 
 export default class Setup extends Command {
@@ -22,7 +22,7 @@ export default class Setup extends Command {
   }
 
   async run(): Promise<void> {
-    const {args, flags} = await this.parse(Setup)
+    const {flags} = await this.parse(Setup)
 
     await setup(flags.depsOnly, flags.keepDocs)
   }
