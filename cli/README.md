@@ -82,11 +82,14 @@ Builds the editor
 
 ```
 USAGE
-  $ emile build editor [-e development|production]
+  $ emile build editor [-e development|production] [--dir -p]
 
 FLAGS
   -e, --env=<option>  [default: production] Environment to build the editor in
                       <options: development|production>
+  -p, --package       Package the editor into a platform installer (exe on Windows, AppImage/deb on Linux, dmg on macOS)
+      --dir           With --package, produce an unpacked directory build instead of a full installer (faster, for local
+                      testing)
 
 DESCRIPTION
   Builds the editor

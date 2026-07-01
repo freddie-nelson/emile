@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "build:package": "electron-vite build && electron-builder",
+    "build:package:dir": "electron-vite build && electron-builder --dir",
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
@@ -38,6 +40,7 @@
     "@types/react-dom": "18.3.0",
     "@vitejs/plugin-react": "4.3.2",
     "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
     "electron-vite": "^2.3.0",
     "eslint": "9.11.1",
     "eslint-config-prettier": "^10.0.1",
@@ -51,5 +54,57 @@
     "typescript": "5.6.2",
     "typescript-eslint": "^8.7.0",
     "vite": "^5.4.10"
+  },
+  "build": {
+    "appId": "com.emile.editor",
+    "productName": "Emile Editor",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "EmileEditor-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "Development",
+      "artifactName": "EmileEditor-${version}-${arch}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "artifactName": "EmileEditor-${version}-${arch}.${ext}"
+    }
   }
 }
