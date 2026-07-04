@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-import { type EntityItem, type UseEntityList } from "./useEntityTabs";
+import { type EditorComponent, type UseObjectList } from "./useObjectTabs";
 
-const initial: EntityItem[] = [
+const initial: EditorComponent[] = [
   { id: "1", name: "Transform", meta: "struct" },
   { id: "2", name: "Sprite", meta: "asset" },
   { id: "3", name: "RigidBody", meta: "physics" },
@@ -14,8 +14,8 @@ const initial: EntityItem[] = [
 let nextId = initial.length + 1;
 
 /** Mock component list with create/remove/update mutators. */
-export function useComponents(): UseEntityList {
-  const [items, setItems] = useState<EntityItem[]>(initial);
+export function useComponents(): UseObjectList<EditorComponent> {
+  const [items, setItems] = useState<EditorComponent[]>(initial);
 
   const create = () =>
     setItems((prev) => [

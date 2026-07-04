@@ -1,4 +1,4 @@
-import { EntityTabs } from "@renderer/components/panels/EntityTabs";
+import { ObjectTabs } from "@renderer/components/panels/ObjectTabs";
 import { FileTree } from "@renderer/components/panels/FileTree";
 import {
   ResizableHandle,
@@ -15,7 +15,7 @@ export function LeftSidebar() {
         minSize={LEFT_SIDEBAR_SIZES.top.minSize}
         className="overflow-hidden"
       >
-        <EntityTabs />
+        <ObjectTabs />
       </ResizablePanel>
       <ResizableHandle />
       <ResizablePanel

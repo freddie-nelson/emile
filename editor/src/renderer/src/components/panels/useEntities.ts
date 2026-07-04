@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-import { type EntityItem, type UseEntityList } from "./useEntityTabs";
+import { type EditorEntity, type UseObjectList } from "./useObjectTabs";
 
-const initial: EntityItem[] = [
+const initial: EditorEntity[] = [
   { id: "1", name: "Player", meta: "8 components", parentId: null },
   { id: "2", name: "Camera", meta: "4 components", parentId: "1" },
   { id: "3", name: "Enemy", meta: "6 components", parentId: null },
@@ -16,8 +16,8 @@ const initial: EntityItem[] = [
 let nextId = initial.length + 1;
 
 /** Mock entity list with create/remove/update mutators. */
-export function useEntities(): UseEntityList {
-  const [items, setItems] = useState<EntityItem[]>(initial);
+export function useEntities(): UseObjectList<EditorEntity> {
+  const [items, setItems] = useState<EditorEntity[]>(initial);
 
   const create = (parentId: string | null) =>
     setItems((prev) => [
@@ -29,6 +29,9 @@ export function useEntities(): UseEntityList {
     setItems((prev) => {
       // Collect the target and any descendants reachable through parentId.
       const toRemove = new Set<string>([id]);
+
+      // keep looping until no new descendants are found
+      // order of prev won't be in any particular order, so we need to keep checking until no new descendants are found
       let changed = true;
       while (changed) {
         changed = false;
@@ -39,6 +42,7 @@ export function useEntities(): UseEntityList {
           }
         }
       }
+
       return prev.filter((item) => !toRemove.has(item.id));
     });
 
