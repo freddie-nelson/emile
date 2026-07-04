@@ -1,6 +1,7 @@
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import { app, BrowserWindow, shell } from "electron";
 import { join } from "path";
+
 import { env } from "../shared/env";
 
 function createWindow(): void {

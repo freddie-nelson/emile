@@ -1,6 +1,6 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
-import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
 
 // https://electron-vite.org/config/
