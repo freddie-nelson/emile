@@ -1,4 +1,4 @@
-import { ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Pencil, Plus, Scroll, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@renderer/components/ui/button";
@@ -14,6 +14,7 @@ import {
   type UseObjectList,
   useObjectTabs,
 } from "./useObjectTabs";
+import { ObjectTreeNode, TreeList } from "../shared/TreeList";
 
 type ObjectLists = {
   entities: UseObjectList<EditorEntity>;
@@ -55,10 +56,6 @@ function ItemList({
   );
 }
 
-interface ObjectTreeNode extends EditorEntity {
-  children: ObjectTreeNode[];
-}
-
 /** Builds a parent -> children tree from a flat list of entities. */
 function buildObjectTree(items: EditorEntity[]): ObjectTreeNode[] {
   const nodes = new Map<string, ObjectTreeNode>();
@@ -74,93 +71,8 @@ function buildObjectTree(items: EditorEntity[]): ObjectTreeNode[] {
       roots.push(node);
     }
   }
+
   return roots;
-}
-
-function ObjectNode({
-  node,
-  depth,
-  selectedId,
-  onSelect,
-  onEdit,
-}: {
-  node: ObjectTreeNode;
-  depth: number;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  onEdit: (id: string) => void;
-}) {
-  const [open, setOpen] = useState(true);
-  const hasChildren = node.children.length > 0;
-
-  return (
-    <li role="treeitem" aria-expanded={hasChildren ? open : undefined}>
-      <button
-        type="button"
-        onClick={() => {
-          onSelect(node.id);
-          if (hasChildren) setOpen((v) => !v);
-        }}
-        onDoubleClick={() => onEdit(node.id)}
-        className={`flex w-full items-center gap-1 py-1.5 pr-3 text-xs hover:bg-muted ${
-          selectedId === node.id ? "bg-accent" : ""
-        }`}
-        style={{ paddingLeft: `${depth * 12 + 4}px` }}
-      >
-        <ChevronRight
-          className={`size-3 shrink-0 text-muted-foreground transition-transform ${
-            open ? "rotate-90" : ""
-          } ${hasChildren ? "opacity-100" : "opacity-0"}`}
-        />
-        <span className="truncate text-foreground">{node.name}</span>
-        <span className="ml-auto shrink-0 text-muted-foreground">{node.meta}</span>
-      </button>
-      {hasChildren && open && (
-        <ul role="group">
-          {node.children.map((child) => (
-            <ObjectNode
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              selectedId={selectedId}
-              onSelect={onSelect}
-              onEdit={onEdit}
-            />
-          ))}
-        </ul>
-      )}
-    </li>
-  );
-}
-
-function ObjectTree({
-  items,
-  selectedId,
-  onSelect,
-  onEdit,
-}: {
-  items: EditorEntity[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  onEdit: (id: string) => void;
-}) {
-  const roots = buildObjectTree(items);
-  return (
-    <ScrollArea className="h-full">
-      <ul role="tree" className="flex flex-col">
-        {roots.map((node) => (
-          <ObjectNode
-            key={node.id}
-            node={node}
-            depth={0}
-            selectedId={selectedId}
-            onSelect={onSelect}
-            onEdit={onEdit}
-          />
-        ))}
-      </ul>
-    </ScrollArea>
-  );
 }
 
 export function ObjectTabs() {
@@ -230,12 +142,21 @@ export function ObjectTabs() {
       {ENTITY_TABS.map((tab) => (
         <TabsContent key={tab.id} value={tab.id} className="min-h-0 flex-1">
           {tab.id === "entities" ? (
-            <ObjectTree
-              items={lists[tab.id].items}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onEdit={handleEdit}
-            />
+            <ScrollArea className="h-full">
+              <TreeList
+                items={buildObjectTree(lists[tab.id].items)}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onEdit={handleEdit}
+                onDragEnd={(sourceItem, targetItem) => {
+                  if (targetItem) {
+                    lists[tab.id].move?.(sourceItem.id, targetItem.id);
+                  } else {
+                    lists[tab.id].move?.(sourceItem.id, null);
+                  }
+                }}
+              />
+            </ScrollArea>
           ) : (
             <ItemList
               items={lists[tab.id].items}

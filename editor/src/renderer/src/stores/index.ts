@@ -37,6 +37,7 @@ interface Store {
   addEntity: (parentId: string | null) => void;
   removeEntity: (id: string) => void;
   updateEntity: (id: string, name: string) => void;
+  moveEntity: (id: string, newParentId: string | null) => void;
 
   components: EditorComponent[];
   addComponent: () => void;
@@ -72,6 +73,13 @@ export const useStore = create<Store>((set, get) => ({
   updateEntity: (id: string, name: string) => {
     set((prev) => ({
       entities: prev.entities.map((item) => (item.id === id ? { ...item, name } : item)),
+    }));
+  },
+  moveEntity: (id: string, newParentId: string | null) => {
+    set((prev) => ({
+      entities: prev.entities.map((item) =>
+        item.id === id ? { ...item, parentId: newParentId } : item,
+      ),
     }));
   },
 

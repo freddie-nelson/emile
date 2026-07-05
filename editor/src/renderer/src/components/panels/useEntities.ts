@@ -9,6 +9,7 @@ export function useEntities(): UseObjectList<EditorEntity> {
       create: state.addEntity,
       remove: state.removeEntity,
       update: state.updateEntity,
+      move: state.moveEntity,
     })),
   );
 }

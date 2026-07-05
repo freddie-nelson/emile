@@ -66,7 +66,7 @@ export function Console() {
           {CONSOLE_FILTERS.map((filter) => {
             const Icon = filter.icon;
             const enabled = filters.has(filter.id);
-            console.log(LEVEL_TEXT[filter.level]);
+
             return (
               <Toggle
                 key={filter.id}

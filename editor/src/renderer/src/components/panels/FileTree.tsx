@@ -1,67 +1,55 @@
 import { ScrollArea } from "@renderer/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@renderer/components/ui/tabs";
 import { FILE_TREE_TABS, type FileTreeTabId } from "@renderer/constants/layout";
-import { cn } from "@renderer/lib/utils";
-import { ChevronRight, File, Folder, FolderOpen } from "lucide-react";
+import { File, Folder, FolderOpen } from "lucide-react";
 import { useState } from "react";
 
 import { type FileTreeNode, useFileTree } from "./useFileTree";
+import { type ObjectTreeNode, TreeList } from "@renderer/components/shared/TreeList";
 
-function TreeItem({ node, depth }: { node: FileTreeNode; depth: number }) {
-  const [expanded, setExpanded] = useState(depth < 1);
+function toObjectTree(nodes: FileTreeNode[], parentId: string | null = null): ObjectTreeNode[] {
+  return nodes.map((node) => ({
+    id: node.id,
+    parentId,
+    name: node.name,
+    meta: node.type,
+    children: node.children ? toObjectTree(node.children, node.id) : [],
+  }));
+}
 
-  if (node.type === "file") {
-    return (
-      <div
-        className="flex items-center gap-1 py-1 pr-2 text-xs hover:bg-muted"
-        style={{ paddingLeft: depth * 12 + 8 }}
-      >
-        <File className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="truncate text-foreground">{node.name}</span>
-      </div>
-    );
-  }
+function FileTreeItem(item: ObjectTreeNode, depth: number, isOpen: boolean) {
+  const isFolder = item.meta === "folder";
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-1 py-1 pr-2 text-xs hover:bg-muted"
-        style={{ paddingLeft: depth * 12 + 4 }}
-      >
-        <ChevronRight
-          className={cn(
-            "size-3.5 shrink-0 text-muted-foreground transition-transform",
-            expanded && "rotate-90",
-          )}
-        />
-        {expanded ? (
+    <div className="flex w-full items-center gap-1.5">
+      {isFolder ? (
+        isOpen ? (
           <FolderOpen className="size-3.5 shrink-0 text-muted-foreground" />
         ) : (
           <Folder className="size-3.5 shrink-0 text-muted-foreground" />
-        )}
-        <span className="truncate text-foreground">{node.name}</span>
-      </button>
-      {expanded && node.children && (
-        <div>
-          {node.children.map((child) => (
-            <TreeItem key={child.id} node={child} depth={depth + 1} />
-          ))}
-        </div>
+        )
+      ) : (
+        <File className="size-3.5 shrink-0 text-muted-foreground" />
       )}
+      <span className="truncate text-foreground text-left">{item.name}</span>
     </div>
   );
 }
 
 function TreeView({ nodes }: { nodes: FileTreeNode[] }) {
+  const items = toObjectTree(nodes);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
   return (
     <ScrollArea className="h-full">
-      <div className="py-1">
-        {nodes.map((node) => (
-          <TreeItem key={node.id} node={node} depth={0} />
-        ))}
-      </div>
+      <TreeList
+        items={items}
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+        onEdit={() => {}}
+        onDragEnd={() => {}}
+        renderItem={(item, depth, isOpen) => FileTreeItem(item, depth, isOpen)}
+      />
     </ScrollArea>
   );
 }

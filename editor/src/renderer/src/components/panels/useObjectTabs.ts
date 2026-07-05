@@ -34,6 +34,7 @@ export interface UseObjectList<T extends EditorItem = EditorItem> {
   create: (selectedId: string | null) => void;
   remove: (id: string) => void;
   update: (id: string, name: string) => void;
+  move?: (id: string, newParentId: string | null) => void;
 }
 
 interface UseObjectTabs {
