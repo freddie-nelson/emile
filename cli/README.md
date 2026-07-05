@@ -56,7 +56,7 @@ DESCRIPTION
   Builds the client and server
 ```
 
-_See code: [src/commands/build/all.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/src/commands/build/all.ts)_
+_See code: [dist/cli/src/commands/build/all.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/dist/cli/src/commands/build/all.ts)_
 
 ## `emile build client`
 
@@ -74,7 +74,7 @@ DESCRIPTION
   Builds the client
 ```
 
-_See code: [src/commands/build/client.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/src/commands/build/client.ts)_
+_See code: [dist/cli/src/commands/build/client.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/dist/cli/src/commands/build/client.ts)_
 
 ## `emile build editor`
 
@@ -82,7 +82,7 @@ Builds the editor
 
 ```
 USAGE
-  $ emile build editor [-e development|production] [--dir -p]
+  $ emile build editor [--dir -p] [-e development|production]
 
 FLAGS
   -e, --env=<option>  [default: production] Environment to build the editor in
@@ -95,7 +95,7 @@ DESCRIPTION
   Builds the editor
 ```
 
-_See code: [src/commands/build/editor.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/src/commands/build/editor.ts)_
+_See code: [dist/cli/src/commands/build/editor.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/dist/cli/src/commands/build/editor.ts)_
 
 ## `emile build server`
 
@@ -113,7 +113,7 @@ DESCRIPTION
   Builds the server
 ```
 
-_See code: [src/commands/build/server.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/src/commands/build/server.ts)_
+_See code: [dist/cli/src/commands/build/server.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/dist/cli/src/commands/build/server.ts)_
 
 ## `emile dev client`
 
@@ -131,7 +131,7 @@ DESCRIPTION
   Runs the client dev server
 ```
 
-_See code: [src/commands/dev/client.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/src/commands/dev/client.ts)_
+_See code: [dist/cli/src/commands/dev/client.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/dist/cli/src/commands/dev/client.ts)_
 
 ## `emile dev editor`
 
@@ -149,7 +149,7 @@ DESCRIPTION
   Runs the editor dev server
 ```
 
-_See code: [src/commands/dev/editor.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/src/commands/dev/editor.ts)_
+_See code: [dist/cli/src/commands/dev/editor.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/dist/cli/src/commands/dev/editor.ts)_
 
 ## `emile dev server`
 
@@ -167,7 +167,7 @@ DESCRIPTION
   Runs the server dev server
 ```
 
-_See code: [src/commands/dev/server.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/src/commands/dev/server.ts)_
+_See code: [dist/cli/src/commands/dev/server.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/dist/cli/src/commands/dev/server.ts)_
 
 ## `emile help [COMMAND]`
 
@@ -201,7 +201,7 @@ DESCRIPTION
   Gets the next component IDs available for use in the engine and your game
 ```
 
-_See code: [src/commands/next-id/index.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/src/commands/next-id/index.ts)_
+_See code: [dist/cli/src/commands/next-id/index.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/dist/cli/src/commands/next-id/index.ts)_
 
 ## `emile setup`
 
@@ -220,5 +220,5 @@ DESCRIPTION
   Must be run from the root directory of the project (e.g. where client, engine, game, etc, folders are located).
 ```
 
-_See code: [src/commands/setup/index.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/src/commands/setup/index.ts)_
+_See code: [dist/cli/src/commands/setup/index.ts](https://github.com/freddie-nelson/emile/blob/v0.0.0/dist/cli/src/commands/setup/index.ts)_
 <!-- commandsstop -->

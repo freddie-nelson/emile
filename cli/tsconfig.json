@@ -3,12 +3,12 @@
     "declaration": true,
     "module": "Node16",
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": "..",
     "strict": true,
     "target": "ESNext",
     "moduleResolution": "node16"
   },
-  "include": ["./src/**/*"],
+  "include": ["./src", "../shared/src/commands"],
   "ts-node": {
     "esm": true
   }

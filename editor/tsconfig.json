@@ -4,7 +4,11 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@renderer/*": ["src/renderer/src/*"]
+      "@renderer/*": ["src/renderer/src/*"],
+      "@engine/*": ["../engine/*"],
+      "@state/*": ["../state/*"],
+      "@shared/*": ["../shared/*"],
+      "@game/*": ["../game/*"]
     }
   }
 }

@@ -1,6 +1,6 @@
 import {join} from 'path'
-import {pnpmCommand, runCommand} from './run.js'
 import {existsSync, rmdirSync} from 'fs'
+import {pnpmCommand, runCommand} from './run.js'
 
 const requiredVersion = 'v22.22.3'
 
@@ -63,7 +63,7 @@ const install = async () => {
   console.log('[DEV] Dependencies installed.')
 }
 
-export default async function setup(depsOnly: boolean, keepDocs: boolean) {
+export async function setup(depsOnly: boolean, keepDocs: boolean) {
   if (!(await checkNodeVersion()) || !(await checkPnpm())) {
     return
   }

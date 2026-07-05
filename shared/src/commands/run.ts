@@ -2,8 +2,10 @@ import {spawn, SpawnOptions} from 'child_process'
 
 export const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 
+export type RunResult = {output: string; success: boolean}
+
 export const runCommand = (name: string, command: string, args: string[], options?: SpawnOptions) => {
-  return new Promise<{output: string; success: boolean}>((resolve) => {
+  return new Promise<RunResult>((resolve) => {
     const p = spawn(command, args, {
       shell: true,
       ...options,

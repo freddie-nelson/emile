@@ -1,5 +1,14 @@
 export interface Environment {
   NODE_ENV: string;
+  CLI_DIR: string;
+  CLIENT_DIR: string;
+  DOCS_DIR: string;
+  EDITOR_DIR: string;
+  ENGINE_DIR: string;
+  GAME_DIR: string;
+  SERVER_DIR: string;
+  SHARED_DIR: string;
+  STATE_DIR: string;
 }
 
 export const getStringEnv = (key: string): string => {
@@ -39,4 +48,13 @@ export const getBoolEnv = (key: string): boolean => {
 
 export const env: Environment = {
   NODE_ENV: getStringEnv("VITE_NODE_ENV"),
+  CLI_DIR: getStringEnv("VITE_CLI_DIR"),
+  CLIENT_DIR: getStringEnv("VITE_CLIENT_DIR"),
+  DOCS_DIR: getStringEnv("VITE_DOCS_DIR"),
+  EDITOR_DIR: getStringEnv("VITE_EDITOR_DIR"),
+  ENGINE_DIR: getStringEnv("VITE_ENGINE_DIR"),
+  GAME_DIR: getStringEnv("VITE_GAME_DIR"),
+  SERVER_DIR: getStringEnv("VITE_SERVER_DIR"),
+  SHARED_DIR: getStringEnv("VITE_SHARED_DIR"),
+  STATE_DIR: getStringEnv("VITE_STATE_DIR"),
 };

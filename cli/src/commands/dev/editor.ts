@@ -1,5 +1,6 @@
-import {Args, Command, Flags} from '@oclif/core'
-import {pnpmCommand, runCommand} from '../../helpers/run.js'
+import {Command, Flags} from '@oclif/core'
+
+import {devEditor, type DevEditorEnv} from '../../../../shared/src/commands/dev.js'
 
 export default class DevEditor extends Command {
   static args = {}
@@ -7,20 +8,17 @@ export default class DevEditor extends Command {
   static examples = []
   static flags = {
     env: Flags.string({
-      name: 'env',
       char: 'e',
-      description: 'Environment to run the editor in',
       default: 'development',
+      description: 'Environment to run the editor in',
+      name: 'env',
       options: ['development', 'production'],
     }),
   }
 
   async run(): Promise<void> {
-    const {args, flags} = await this.parse(DevEditor)
+    const {flags} = await this.parse(DevEditor)
 
-    runCommand('dev:editor', pnpmCommand, ['run', 'dev', '--', '--mode', flags.env], {
-      cwd: 'editor',
-      stdio: 'inherit',
-    })
+    devEditor(flags.env as DevEditorEnv)
   }
 }

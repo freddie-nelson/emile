@@ -1,5 +1,6 @@
 import {Command, Flags} from '@oclif/core'
-import setup from '../../helpers/setup.js'
+
+import {setup} from '../../../../shared/src/commands/setup.js'
 
 export default class Setup extends Command {
   static args = {}
@@ -9,15 +10,15 @@ export default class Setup extends Command {
   static flags = {
     depsOnly: Flags.boolean({
       char: 'd',
-      name: 'depsOnly',
-      description: 'Only install dependencies, no other setup steps',
       default: false,
+      description: 'Only install dependencies, no other setup steps',
+      name: 'depsOnly',
     }),
     keepDocs: Flags.boolean({
       char: 'k',
-      name: 'keepDocs',
-      description: 'Keep the docs folder after setup',
       default: false,
+      description: 'Keep the docs folder after setup',
+      name: 'keepDocs',
     }),
   }
 

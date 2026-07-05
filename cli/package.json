@@ -43,12 +43,12 @@
     "emile"
   ],
   "license": "MIT",
-  "main": "dist/index.js",
+  "main": "./dist/cli/src/index.js",
   "type": "module",
   "oclif": {
     "bin": "emile",
     "dirname": "emile",
-    "commands": "./dist/commands",
+    "commands": "./dist/cli/src/commands",
     "plugins": [
       "@oclif/plugin-help"
     ],
@@ -64,5 +64,5 @@
     "prepack": "oclif manifest && oclif readme",
     "version": "oclif readme && git add README.md"
   },
-  "types": "dist/index.d.ts"
+  "types": "./dist/cli/src/index.d.ts"
 }

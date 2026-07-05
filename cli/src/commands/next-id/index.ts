@@ -1,5 +1,6 @@
-import {Args, Command, Flags} from '@oclif/core'
-import {getNextIds} from '../../helpers/getNextComponentId.js'
+import {Command} from '@oclif/core'
+
+import {getNextIds} from '../../../../shared/src/commands/next-id.js'
 
 export default class NextId extends Command {
   static args = {}
@@ -8,8 +9,6 @@ export default class NextId extends Command {
   static flags = {}
 
   async run(): Promise<void> {
-    const {args, flags} = await this.parse(NextId)
-
     const {nextEngineId, nextUserId} = await getNextIds()
 
     this.log(`Next available engine id: ${nextEngineId}`)
