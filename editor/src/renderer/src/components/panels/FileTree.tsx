@@ -49,6 +49,7 @@ function TreeView({ nodes }: { nodes: FileTreeNode[] }) {
         onEdit={() => {}}
         onDragEnd={() => {}}
         renderItem={(item, depth, isOpen) => FileTreeItem(item, depth, isOpen)}
+        onExpand={() => {}}
       />
     </ScrollArea>
   );

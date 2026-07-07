@@ -36,18 +36,18 @@ interface Store {
   entities: EditorEntity[];
   addEntity: (parentId: string | null) => void;
   removeEntity: (id: string) => void;
-  updateEntity: (id: string, name: string) => void;
+  updateEntity: (id: string, item: Partial<EditorEntity>) => void;
   moveEntity: (id: string, newParentId: string | null) => void;
 
   components: EditorComponent[];
   addComponent: () => void;
   removeComponent: (id: string) => void;
-  updateComponent: (id: string, name: string) => void;
+  updateComponent: (id: string, item: Partial<EditorComponent>) => void;
 
   systems: EditorSystem[];
   addSystem: () => void;
   removeSystem: (id: string) => void;
-  updateSystem: (id: string, name: string) => void;
+  updateSystem: (id: string, item: Partial<EditorSystem>) => void;
 }
 
 export const useStore = create<Store>((set, get) => ({
@@ -70,9 +70,11 @@ export const useStore = create<Store>((set, get) => ({
       entities: prev.entities.filter((item) => item.id !== id),
     }));
   },
-  updateEntity: (id: string, name: string) => {
+  updateEntity: (id: string, newEntity: Partial<EditorEntity>) => {
     set((prev) => ({
-      entities: prev.entities.map((item) => (item.id === id ? { ...item, name } : item)),
+      entities: prev.entities.map((entity) =>
+        entity.id === id ? { ...entity, ...newEntity } : entity,
+      ),
     }));
   },
   moveEntity: (id: string, newParentId: string | null) => {
@@ -101,9 +103,11 @@ export const useStore = create<Store>((set, get) => ({
       components: prev.components.filter((item) => item.id !== id),
     }));
   },
-  updateComponent: (id: string, name: string) => {
+  updateComponent: (id: string, newComponent: Partial<EditorComponent>) => {
     set((prev) => ({
-      components: prev.components.map((item) => (item.id === id ? { ...item, name } : item)),
+      components: prev.components.map((component) =>
+        component.id === id ? { ...component, ...newComponent } : component,
+      ),
     }));
   },
 
@@ -121,9 +125,11 @@ export const useStore = create<Store>((set, get) => ({
       systems: prev.systems.filter((item) => item.id !== id),
     }));
   },
-  updateSystem: (id: string, name: string) => {
+  updateSystem: (id: string, newSystem: Partial<EditorSystem>) => {
     set((prev) => ({
-      systems: prev.systems.map((item) => (item.id === id ? { ...item, name } : item)),
+      systems: prev.systems.map((system) =>
+        system.id === id ? { ...system, ...newSystem } : system,
+      ),
     }));
   },
 }));

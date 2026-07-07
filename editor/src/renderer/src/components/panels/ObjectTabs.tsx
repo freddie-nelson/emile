@@ -56,7 +56,6 @@ function ItemList({
   );
 }
 
-/** Builds a parent -> children tree from a flat list of entities. */
 function buildObjectTree(items: EditorEntity[]): ObjectTreeNode[] {
   const nodes = new Map<string, ObjectTreeNode>();
   for (const item of items) {
@@ -93,9 +92,11 @@ export function ObjectTabs() {
   };
 
   const handleEdit = (id: string) => {
-    const current = active.items.find((item) => item.id === id)?.name ?? "";
-    const name = window.prompt("Edit item", current);
-    if (name) active.update(id, name);
+    active.update(id, { name: "Edited" });
+  };
+
+  const handleExpand = (id: string, isExpanded: boolean) => {
+    active.update(id, { isExpanded });
   };
 
   return (
@@ -155,6 +156,7 @@ export function ObjectTabs() {
                     lists[tab.id].move?.(sourceItem.id, null);
                   }
                 }}
+                onExpand={handleExpand}
               />
             </ScrollArea>
           ) : (

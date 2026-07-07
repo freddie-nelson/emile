@@ -12,6 +12,7 @@ export interface EditorEntity {
    * Mirrors the engine's `ParentTag.parentEntityId`.
    */
   parentId: string | null;
+  isExpanded?: boolean;
 }
 
 export interface EditorComponent {
@@ -33,7 +34,7 @@ export interface UseObjectList<T extends EditorItem = EditorItem> {
   items: T[];
   create: (selectedId: string | null) => void;
   remove: (id: string) => void;
-  update: (id: string, name: string) => void;
+  update: (id: string, item: Partial<T>) => void;
   move?: (id: string, newParentId: string | null) => void;
 }
 
