@@ -155,3 +155,18 @@ body,
     @apply font-mono;
   }
 }
+
+.tiny-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.tiny-scrollbar::-webkit-scrollbar-track {
+  background: var(--card);
+}
+.tiny-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: var(--radius);
+}
+.tiny-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}

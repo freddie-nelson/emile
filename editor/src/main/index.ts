@@ -1,8 +1,10 @@
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow, shell, session } from "electron";
 import { join } from "path";
 
 import { env } from "../shared/env";
+
+app.commandLine.appendSwitch("disable-blink-features", "BlockCredentialedSubresources");
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -15,6 +17,7 @@ function createWindow(): void {
       sandbox: true,
       contextIsolation: true,
       devTools: env.NODE_ENV === "development",
+      webSecurity: false,
     },
   });
 
@@ -36,6 +39,32 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId("com.emile.editor");
+
+  // Strip X-Frame-Options and CSP frame-ancestors so external sites can be
+  // embedded in iframes within the editor.
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const headers = { ...details.responseHeaders };
+    delete headers["X-Frame-Options"];
+    delete headers["x-frame-options"];
+    delete headers["Content-Security-Policy"];
+    delete headers["content-security-policy"];
+    delete headers["Content-Security-Policy-Report-Only"];
+    delete headers["content-security-policy-report-only"];
+    callback({ responseHeaders: headers });
+  });
+
+  // Colyseus admin portal credentials
+  const filter = { urls: ["http://localhost:2567/*"] };
+
+  session.defaultSession.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+    // Encode your credentials to Base64 for Basic Auth
+    const credentials = Buffer.from("admin:password").toString("base64");
+
+    // Inject the Authorization header
+    details.requestHeaders["Authorization"] = `Basic ${credentials}`;
+
+    callback({ requestHeaders: details.requestHeaders });
+  });
 
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window);

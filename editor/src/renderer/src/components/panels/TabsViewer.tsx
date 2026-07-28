@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { Button } from "../ui/button";
-import { Pencil, Plus, X } from "lucide-react";
+import { Pencil, Plus, RefreshCcw, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Field, FieldGroup, FieldLabel } from "../ui/field";
 import { toTitleCase } from "@renderer/helpers/string";
+import { Spinner } from "../ui/spinner";
 
 export enum TabType {
   Browser = "browser",
@@ -15,6 +16,8 @@ export interface BrowserTab {
   id: string;
   type: TabType.Browser;
   name: string;
+  isLoading: boolean;
+  error: string;
   data: {
     url: string;
   };
@@ -27,14 +30,18 @@ const defaultTabs: Tab[] = [
     id: "client-preview",
     type: TabType.Browser,
     name: "Client Preview",
+    isLoading: true,
+    error: "",
     data: {
-      url: "http://localhost:3000",
+      url: "http://localhost:3333",
     },
   } satisfies BrowserTab,
   {
     id: "colyseus-playground",
     type: TabType.Browser,
     name: "Colyseus Playground",
+    isLoading: true,
+    error: "",
     data: {
       url: "http://localhost:2567",
     },
@@ -43,6 +50,8 @@ const defaultTabs: Tab[] = [
     id: "colyseus-monitor",
     type: TabType.Browser,
     name: "Colyseus Monitor",
+    isLoading: true,
+    error: "",
     data: {
       url: "http://localhost:2567/colyseus",
     },
@@ -50,16 +59,22 @@ const defaultTabs: Tab[] = [
 ];
 
 export function TabsViewer() {
-  const [activeTab, setActiveTab] = useState<string | null>(null);
   const [tabs, setTabs] = useState<Tab[]>(defaultTabs);
-  const tabIndex = tabs.findIndex((tab) => tab.id === activeTab);
+
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const tabIndex = tabs.findIndex((tab) => tab.id === activeTabId);
+  const activeTab = tabs.find((t) => t.id === activeTabId);
+
+  const updateTab = (id: string, newTab: Partial<Tab>) => {
+    setTabs((tabs) => tabs.map((t) => (t.id === id ? { ...t, ...newTab } : t)));
+  };
 
   const closeTab = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
 
     setTabs((prev) => prev.filter((tab) => tab.id !== id));
-    if (activeTab === id) {
-      setActiveTab(null);
+    if (activeTabId === id) {
+      setActiveTabId(null);
     }
   };
 
@@ -70,16 +85,26 @@ export function TabsViewer() {
 
   const handleEditTab = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editingTab) {
+      return;
+    }
+
+    editingTab.isLoading = true;
 
     setTabs((tabs) => tabs.map((t) => (t.id === editingTab?.id ? editingTab : t)));
     setEditingTab(null);
   };
 
   return (
-    <>
-      <Tabs tabIndex={tabIndex} onValueChange={(v) => setActiveTab(v)}>
+    <div className="flex flex-col w-full h-full">
+      <Tabs
+        tabIndex={tabIndex}
+        onValueChange={(v) => {
+          setActiveTabId(v);
+        }}
+      >
         <div className="flex gap-0 border-b-border border-b">
-          <TabsList className="w-full bg-background justify-start p-0">
+          <TabsList className="w-full bg-background justify-start p-0 overflow-x-auto overflow-y-hidden tiny-scrollbar">
             {tabs.map((tab) => (
               <TabsTrigger
                 key={tab.id}
@@ -122,6 +147,66 @@ export function TabsViewer() {
           </Button>
         </div>
       </Tabs>
+
+      <div className="w-full flex-1 overflow-hidden">
+        {tabs.map((t) => (
+          <div
+            key={t.id}
+            className="w-full h-full relative"
+            style={{ display: t.id === activeTabId ? "block" : "none" }}
+          >
+            {t.isLoading && (
+              <div className="absolute top-0 left-0 w-full h-full bg-background flex justify-center items-center">
+                <Spinner className="size-8" />
+              </div>
+            )}
+
+            {t.error && (
+              <div className="absolute top-0 left-0 w-full h-full bg-background flex justify-center items-center text-center">
+                <h2 className="text-xl font-medium text-destructive">Error While Loading Tab</h2>
+                <p className="text-destructive">{t.error}</p>
+              </div>
+            )}
+
+            {t?.type === TabType.Browser && (
+              <div className="flex flex-col w-full h-full">
+                <div className="w-full bg-card border-b border-b-border flex justify-between items-center gap-4">
+                  <p className="text-[11px] font-mono text-muted-foreground p-1">{t.data.url}</p>
+
+                  <Button
+                    variant="outline"
+                    size="icon-xs"
+                    className="h-full aspect-square!"
+                    onClick={() => {
+                      const iframe = document.getElementById(`iframe-${t.id}`) as HTMLIFrameElement;
+                      updateTab(t.id, { isLoading: true });
+                      iframe.src = iframe.src;
+                    }}
+                  >
+                    <RefreshCcw className="size-3" />
+                  </Button>
+                </div>
+
+                <iframe
+                  id={`iframe-${t.id}`}
+                  className="w-full flex-1"
+                  src={t.data.url}
+                  onLoadStart={() => updateTab(t.id, { isLoading: true })}
+                  onLoad={() => {
+                    updateTab(t.id, { isLoading: false });
+                  }}
+                  onError={() => {
+                    updateTab(t.id, {
+                      isLoading: false,
+                      error: `Failed to load "${t.name}" (${t.data.url})`,
+                    });
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
       <Dialog open={!!editingTab} onOpenChange={(open) => !open && setEditingTab(null)}>
         <DialogContent>
@@ -192,6 +277,6 @@ export function TabsViewer() {
           </form>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
