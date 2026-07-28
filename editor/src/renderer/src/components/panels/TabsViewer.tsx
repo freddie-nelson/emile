@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { Button } from "../ui/button";
-import { Pencil, Plus, RefreshCcw, X } from "lucide-react";
+import { Copy, Pencil, Plus, RefreshCcw, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Field, FieldGroup, FieldLabel } from "../ui/field";
-import { toTitleCase } from "@renderer/helpers/string";
+import { randomId, toTitleCase } from "@renderer/helpers/string";
 import { Spinner } from "../ui/spinner";
 
 export enum TabType {
@@ -78,6 +78,28 @@ export function TabsViewer() {
     }
   };
 
+  const duplicateTab = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+
+    const tab = tabs.find((t) => t.id === id);
+    if (!tab) {
+      return;
+    }
+
+    let nameCount = 1;
+    while (tabs.some((t) => t.name === `${tab.name} (${nameCount})`)) {
+      nameCount++;
+    }
+
+    setTabs((tabs) =>
+      tabs.flatMap((t) =>
+        t.id === id
+          ? [t, { ...structuredClone(t), name: `${t.name} (${nameCount})`, id: randomId() }]
+          : t,
+      ),
+    );
+  };
+
   const [editingTab, setEditingTab] = useState<Tab | null>(null);
   const currentEditingTab = editingTab ? tabs.find((t) => t.id === editingTab?.id) : null;
 
@@ -122,6 +144,15 @@ export function TabsViewer() {
                     aria-label={`Edit ${tab.name}`}
                   >
                     <Pencil className="size-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-5 ml-0 w-0 overflow-hidden opacity-100 scale-75 transition-all duration-200 ease-out group-hover/tab:w-5 group-hover/tab:scale-100 hover:bg-muted-foreground/20 text-accent hover:text-accent"
+                    onClick={(e) => duplicateTab(e, tab.id)}
+                    aria-label={`Duplicate ${tab.name}`}
+                  >
+                    <Copy className="size-3" />
                   </Button>
                   <Button
                     variant="ghost"
