@@ -14,10 +14,15 @@ export default defineConfig({
     },
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
+    // Sandboxed preloads must be CommonJS and can only require "electron", so bundle everything else.
+    plugins: [externalizeDepsPlugin({ exclude: ["@electron-toolkit/preload"] })],
     build: {
       rollupOptions: {
-        input: { index: resolve(__dirname, "src/preload/index.ts") },
+        input: {
+          index: resolve(__dirname, "src/preload/index.ts"),
+          webview: resolve(__dirname, "src/preload/webview.ts"),
+        },
+        output: { format: "cjs", entryFileNames: "[name].js" },
       },
     },
   },

@@ -1,29 +1,16 @@
-import { useRef, useState } from "react";
-import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
-import { Button } from "../ui/button";
-import { Copy, Pencil, Plus, RefreshCcw, X } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Input } from "../ui/input";
-import { Field, FieldGroup, FieldLabel } from "../ui/field";
 import { randomId, toTitleCase } from "@renderer/helpers/string";
+import { Copy, Pencil, Plus, RefreshCcw, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+import { Button } from "../ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Field, FieldGroup, FieldLabel } from "../ui/field";
+import { Input } from "../ui/input";
 import { Spinner } from "../ui/spinner";
-
-export enum TabType {
-  Browser = "browser",
-}
-
-export interface BrowserTab {
-  id: string;
-  type: TabType.Browser;
-  name: string;
-  isLoading: boolean;
-  error: string;
-  data: {
-    url: string;
-  };
-}
-
-export type Tab = BrowserTab;
+import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
+import { GuestDialog, GuestDialogRequest, GuestDialogResult } from "./GuestDialog";
+import { BrowserTab, Tab, TabType } from "./Tabs";
+import { TabWebview } from "./TabWebview";
 
 const defaultTabs: Tab[] = [
   {
@@ -69,6 +56,37 @@ export function TabsViewer() {
     setTabs((tabs) => tabs.map((t) => (t.id === id ? { ...t, ...newTab } : t)));
   };
 
+  const webviews = useRef(new Map<string, Electron.WebviewTag>());
+
+  // Dialogs opened by pages, which stay blocked until the matching one is answered here.
+  const [contentsToTab, setContentsToTab] = useState<Record<number, string>>({});
+  const [dialogs, setDialogs] = useState<GuestDialogRequest[]>([]);
+
+  useEffect(() => {
+    const offOpen = window.electron.ipcRenderer.on(
+      "guest-dialog",
+      (_e, request: GuestDialogRequest) => setDialogs((prev) => [...prev, request]),
+    );
+    const offCancel = window.electron.ipcRenderer.on(
+      "guest-dialog-cancel",
+      (_e, requestId: number) =>
+        setDialogs((prev) => prev.filter((d) => d.requestId !== requestId)),
+    );
+
+    return () => {
+      offOpen();
+      offCancel();
+    };
+  }, []);
+
+  // Only the tab being viewed shows its dialog, the others wait until it is selected.
+  const activeDialog = dialogs.find((d) => contentsToTab[d.webContentsId] === activeTabId);
+
+  const answerDialog = (requestId: number, result: GuestDialogResult) => {
+    window.electron.ipcRenderer.send("guest-dialog-result", requestId, result);
+    setDialogs((prev) => prev.filter((d) => d.requestId !== requestId));
+  };
+
   const closeTab = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
 
@@ -111,9 +129,9 @@ export function TabsViewer() {
       return;
     }
 
-    editingTab.isLoading = true;
+    const saved = { ...editingTab, isLoading: true, currentUrl: undefined };
 
-    setTabs((tabs) => tabs.map((t) => (t.id === editingTab?.id ? editingTab : t)));
+    setTabs((tabs) => tabs.map((t) => (t.id === saved.id ? saved : t)));
     setEditingTab(null);
   };
 
@@ -179,12 +197,12 @@ export function TabsViewer() {
         </div>
       </Tabs>
 
-      <div className="w-full flex-1 overflow-hidden">
+      <div className="w-full flex-1 overflow-hidden relative">
         {tabs.map((t) => (
+          // Inactive tabs are hidden with visibility, not display: none, so their webviews keep their size and state.
           <div
             key={t.id}
-            className="w-full h-full relative"
-            style={{ display: t.id === activeTabId ? "block" : "none" }}
+            className={`absolute inset-0 ${t.id === activeTabId ? "" : "invisible pointer-events-none"}`}
           >
             {t.isLoading && (
               <div className="absolute top-0 left-0 w-full h-full bg-background flex justify-center items-center">
@@ -193,51 +211,76 @@ export function TabsViewer() {
             )}
 
             {t.error && (
-              <div className="absolute top-0 left-0 w-full h-full bg-background flex justify-center items-center text-center">
+              <div className="absolute top-0 left-0 w-full h-full bg-background flex justify-center items-center text-center flex-col">
                 <h2 className="text-xl font-medium text-destructive">Error While Loading Tab</h2>
                 <p className="text-destructive">{t.error}</p>
+                <Button
+                  variant="destructive"
+                  className="mt-2 w-32"
+                  onClick={() => {
+                    updateTab(t.id, { isLoading: true, error: "" });
+                    webviews.current.get(t.id)?.reload();
+                  }}
+                >
+                  Retry
+                </Button>
               </div>
             )}
 
             {t?.type === TabType.Browser && (
               <div className="flex flex-col w-full h-full">
                 <div className="w-full bg-card border-b border-b-border flex justify-between items-center gap-4">
-                  <p className="text-[11px] font-mono text-muted-foreground p-1">{t.data.url}</p>
+                  <p className="text-[11px] font-mono text-muted-foreground p-1">
+                    {t.currentUrl ?? t.data.url}
+                  </p>
 
                   <Button
                     variant="outline"
                     size="icon-xs"
                     className="h-full aspect-square!"
                     onClick={() => {
-                      const iframe = document.getElementById(`iframe-${t.id}`) as HTMLIFrameElement;
-                      updateTab(t.id, { isLoading: true });
-                      iframe.src = iframe.src;
+                      updateTab(t.id, { isLoading: true, error: "" });
+                      webviews.current.get(t.id)?.reload();
                     }}
                   >
                     <RefreshCcw className="size-3" />
                   </Button>
                 </div>
 
-                <iframe
-                  id={`iframe-${t.id}`}
-                  className="w-full flex-1"
-                  src={t.data.url}
-                  onLoadStart={() => updateTab(t.id, { isLoading: true })}
-                  onLoad={() => {
-                    updateTab(t.id, { isLoading: false });
+                <TabWebview
+                  ref={(el) => {
+                    if (el) {
+                      webviews.current.set(t.id, el);
+                    } else {
+                      webviews.current.delete(t.id);
+                    }
                   }}
-                  onError={() => {
-                    updateTab(t.id, {
-                      isLoading: false,
-                      error: `Failed to load "${t.name}" (${t.data.url})`,
-                    });
-                  }}
+                  id={t.id}
+                  url={t.data.url}
+                  onLoadStart={() => updateTab(t.id, { isLoading: true, error: "" })}
+                  onLoadStop={() => updateTab(t.id, { isLoading: false })}
+                  onNavigate={(url) => updateTab(t.id, { currentUrl: url })}
+                  onError={(error) => updateTab(t.id, { isLoading: false, error })}
+                  onAttach={(contentsId) =>
+                    setContentsToTab((prev) =>
+                      prev[contentsId] === t.id ? prev : { ...prev, [contentsId]: t.id },
+                    )
+                  }
                 />
               </div>
             )}
           </div>
         ))}
       </div>
+
+      {activeDialog && activeTab && (
+        <GuestDialog
+          key={activeDialog.requestId}
+          request={activeDialog}
+          tabName={activeTab.name}
+          onResult={(result) => answerDialog(activeDialog.requestId, result)}
+        />
+      )}
 
       <Dialog open={!!editingTab} onOpenChange={(open) => !open && setEditingTab(null)}>
         <DialogContent>
